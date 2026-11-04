@@ -1,7 +1,9 @@
+import { ChevronDown, ChevronRight } from "lucide";
 import { css } from "pitlane/theme";
 import { type Handle, on } from "remix/component";
 
 import type { Problem } from "#app/components/ProblemList.tsx";
+import { Icon } from "#app/components/Icon.tsx";
 import {
   type DerivationLine,
   checkDerivation,
@@ -52,6 +54,8 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
   let lines: DerivationLine[] = [];
   let notice = "";
   let focusAnnotation: number | null = null;
+  let collapsed = new Set<number>();
+  let hoverLine: number | null = null;
 
   return () => {
     let { problem } = handle.props;
@@ -59,6 +63,8 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
       loaded = problem.number;
       lines = [{ symbols: "", annotation: "", depth: 0, entered: false }];
       notice = "";
+      collapsed = new Set();
+      hoverLine = null;
     }
 
     function finished(checkedLines: ReturnType<typeof checkDerivation>["lines"], index: number) {
@@ -96,98 +102,211 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
       });
     }
 
-    function renderLines(start: number, end: number, baseDepth: number) {
-      let nodes = [];
-      for (let index = start; index < end; ) {
-        let line = lines[index];
-        let checked = result.lines[index];
-        if (!line) break;
-        if (checked?.boxed) {
-          let boxDepth = line.depth + 1;
-          let stop = index + 1;
-          while (stop < end && (lines[stop]?.depth ?? 0) >= boxDepth) stop += 1;
-          nodes.push(renderLine(index, line.depth - baseDepth, baseDepth > 0));
-          nodes.push(
-            <div
-              key={`box-${index}`}
-              mix={css({
-                marginLeft: `${(boxDepth - baseDepth) * 24}px`,
-                borderWidth: "1px",
-                borderStyle: "solid",
-                borderColor: t.colors.text.primary,
-              })}
-            >
-              {renderLines(index + 1, stop, boxDepth)}
-            </div>,
-          );
-          index = stop;
-          continue;
-        }
-        nodes.push(renderLine(index, line.depth - baseDepth, baseDepth > 0));
-        index += 1;
-      }
-      return nodes;
+    function bodyRange(showIndex: number) {
+      let boxDepth = (lines[showIndex]?.depth ?? 0) + 1;
+      let stop = showIndex + 1;
+      while (stop < lines.length && (lines[stop]?.depth ?? 0) >= boxDepth) stop += 1;
+      return { start: showIndex + 1, stop };
     }
 
-    function renderLine(index: number, indent: number, inBox: boolean) {
-      let line = lines[index];
-      let checked = result.lines[index];
-      if (!line) return null;
+    function containingShows(index: number) {
+      let shows: number[] = [];
+      for (let show of collapsed) {
+        if (index > show && index < bodyRange(show).stop) shows.push(show);
+      }
+      return shows;
+    }
+
+    function derivationRows() {
+      let rows = [];
+      let boxes = [];
+      for (let index = 0; index < lines.length; index += 1) {
+        let line = lines[index];
+        let checked = result.lines[index];
+        if (!line || containingShows(index).length > 0) continue;
+        rows.push(renderLine(index, line));
+        if (!checked?.boxed) continue;
+        if (collapsed.has(index)) {
+          rows.push(
+            <div
+              key={`ellipsis-${index}`}
+              mix={css({
+                gridColumn: "2",
+                gridRow: `${index + 2}`,
+                marginLeft: `${(line.depth + 1) * 24}px`,
+                color: t.colors.text.primary,
+                textDecoration: "underline",
+              })}
+            >
+              ...
+            </div>,
+          );
+          continue;
+        }
+        let range = bodyRange(index);
+        boxes.push(
+          <div
+            key={`box-${index}`}
+            mix={css({
+              position: "absolute",
+              gridColumn: "2",
+              gridRow: `${index + 1} / ${range.stop + 1}`,
+              zIndex: "1",
+              top: "12px",
+              right: "0px",
+              bottom: "0px",
+              left: `${(line.depth + 1) * 24}px`,
+              borderWidth: "1px",
+              borderStyle: "solid",
+              borderColor: t.colors.text.primary,
+              backgroundColor: "transparent",
+              pointerEvents: "none",
+            })}
+          />,
+        );
+      }
       return (
         <div
-          key={index}
           mix={css({
+            display: "grid",
+            position: "relative",
+            gridTemplateColumns: "auto minmax(0, 1fr) minmax(8rem, 14rem)",
+            alignItems: "center",
+            columnGap: t.space.md,
+          })}
+        >
+          {rows}
+          {boxes}
+        </div>
+      );
+    }
+
+    function formulaCell(index: number, line: DerivationLine, row: string) {
+      return (
+        <div
+          key={`s-${index}`}
+          mix={css({
+            gridColumn: "2",
+            gridRow: row,
             display: "flex",
             flexDirection: "row",
             alignItems: "center",
-            gap: t.space.md,
-            marginLeft: `${indent * 24}px`,
+            paddingLeft: `${line.depth * 24}px`,
           })}
         >
-          <div
-            mix={css({
-              display: "flex",
-              flex: "1",
-              flexDirection: "row",
-              alignItems: "center",
-              gap: t.space.md,
-              paddingInline: t.space.sm,
-              "&:hover": { backgroundColor: t.surface.lvl1 },
-            })}
-          >
-            <h2
-              mix={css({
-                margin: 0,
-                color: t.colors.text.primary,
-                fontSize: t.fontSize.md,
-                fontWeight: t.fontWeight.normal,
-                lineHeight: t.lineHeight.normal,
-              })}
-            >
-              {index + 1}.
-            </h2>
-            <input
-              mix={[
-                lineField,
-                css({ flex: "1" }),
-                on("input", (event) => {
-                  line.symbols = event.currentTarget.value;
-                  handle.update();
-                }),
-              ]}
-              placeholder={inBox ? "" : "Symbols"}
-              type="text"
-              value={line.symbols}
-            />
-          </div>
           <input
             mix={[
               lineField,
               css({
+                flex: "1",
+                minWidth: "0",
+                paddingLeft: t.space.sm,
+                "&:hover": { backgroundColor: t.surface.lvl1 },
+              }),
+              ...watchLine(index),
+              on("input", (event) => {
+                line.symbols = event.currentTarget.value;
+                handle.update();
+              }),
+            ]}
+            placeholder={line.depth > 0 ? "" : "Formula"}
+            data-line={index}
+            type="text"
+            value={line.symbols}
+          />
+        </div>
+      );
+    }
+
+    function watchLine(index: number) {
+      return [
+        on("mouseenter", () => {
+          hoverLine = index;
+          handle.update();
+        }),
+        on("mouseleave", (event) => {
+          let next = event.relatedTarget;
+          if (next instanceof Element && next.closest(`[data-line="${index}"]`)) return;
+          if (hoverLine === index) hoverLine = null;
+          handle.update();
+        }),
+      ];
+    }
+
+    function renderLine(index: number, line: DerivationLine) {
+      let checked = result.lines[index];
+      let row = `${index + 1}`;
+      let showCaret = checked?.boxed != null && hoverLine === index;
+      return (
+        <>
+          {showCaret ? (
+            <button
+              key={`n-${index}`}
+              type="button"
+              aria-label={collapsed.has(index) ? "Open derivation" : "Close derivation"}
+              data-line={index}
+              mix={[
+                css({
+                  gridColumn: "1",
+                  gridRow: row,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "flex-end",
+                  margin: 0,
+                  paddingInline: t.space.sm,
+                  border: "none",
+                  backgroundColor: "transparent",
+                  color: t.colors.text.primary,
+                  cursor: "pointer",
+                }),
+                ...watchLine(index),
+                on("click", () => {
+                  if (collapsed.has(index)) collapsed.delete(index);
+                  else collapsed.add(index);
+                  handle.update();
+                }),
+              ]}
+            >
+              <Icon
+                icon={collapsed.has(index) ? ChevronRight : ChevronDown}
+                mix={css({ width: t.space.xl, height: t.space.xl })}
+              />
+            </button>
+          ) : (
+            <h2
+              key={`n-${index}`}
+              data-line={index}
+              mix={[
+                css({
+                  gridColumn: "1",
+                  gridRow: row,
+                  margin: 0,
+                  paddingInline: t.space.sm,
+                  color: t.colors.text.primary,
+                  fontSize: t.fontSize.md,
+                  fontWeight: t.fontWeight.normal,
+                  lineHeight: t.lineHeight.normal,
+                  textAlign: "right",
+                }),
+                ...watchLine(index),
+              ]}
+            >
+              {index + 1}.
+            </h2>
+          )}
+          {formulaCell(index, line, row)}
+          <input
+            key={`a-${index}`}
+            mix={[
+              lineField,
+              css({
+                gridColumn: "3",
+                gridRow: row,
                 paddingInline: t.space.sm,
                 color: checked?.error ? t.colors.text.warning : t.colors.text.primary,
                 "&:hover": { backgroundColor: t.surface.lvl1 },
               }),
+              ...watchLine(index),
               on("input", (event) => {
                 line.annotation = event.currentTarget.value;
                 line.entered = false;
@@ -205,12 +324,13 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
               }),
             ]}
             data-annotation={index}
+            data-line={index}
             placeholder="Annotation"
             title={checked?.error ?? ""}
             type="text"
             value={line.annotation}
           />
-        </div>
+        </>
       );
     }
 
@@ -272,7 +392,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
         {result.problemError ? (
           <p mix={css({ color: t.colors.text.warning })}>{result.problemError}</p>
         ) : null}
-        {renderLines(0, lines.length, 0)}
+        {derivationRows()}
         {notice ? (
           <div
             mix={css({
