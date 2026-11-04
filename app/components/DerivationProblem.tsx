@@ -3,6 +3,26 @@ import type { Handle } from "remix/component";
 
 import { t } from "#app/theme.ts";
 
+const lineField = css({
+  margin: 0,
+  padding: 0,
+  border: "none",
+  outline: "none",
+  backgroundColor: "transparent",
+  boxShadow: "none",
+  color: t.colors.text.primary,
+  fontSize: t.fontSize.md,
+  fontWeight: t.fontWeight.normal,
+  lineHeight: t.lineHeight.normal,
+  "&::placeholder": {
+    color: t.colors.text.muted,
+    opacity: 1,
+  },
+  "&:focus": {
+    outline: "none",
+  },
+});
+
 export interface DerivationProblemProps {
   number: string;
   problem: string;
@@ -13,11 +33,13 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
     let { number, problem } = handle.props;
 
     return (
-      <div mix={css({ paddingInline: t.space.xl, paddingBlock: t.space.lg })}>
+      <div mix={css({ paddingInline: t.space.xl, paddingBlock: t.space.lg,  })}>
         <h2
           mix={[
             css({
               margin: 0,
+              paddingInline: t.space.sm,
+              paddingBottom: t.space.md,
 
               color: t.colors.text.primary,
               fontSize: t.fontSize.md,
@@ -52,43 +74,45 @@ function DerivationRow(handle: Handle<DerivationRowProps>) {
           gap: t.space.md,
         })}
       >
-        <h2
-          mix={[
-            css({
-              margin: 0,
-
-              color: t.colors.text.primary,
-              fontSize: t.fontSize.md,
-              fontWeight: t.fontWeight.normal,
-              lineHeight: t.lineHeight.normal,
-            }),
-          ]}
-        >
-          {lineNumber}.
-        </h2>
-        <input
+        <div
           mix={css({
+            display: "flex",
             flex: "1",
-            minWidth: "0",
-            margin: 0,
-            padding: 0,
-            border: "none",
-            outline: "none",
-            backgroundColor: "transparent",
-            boxShadow: "none",
-            color: t.colors.text.primary,
-            fontSize: t.fontSize.md,
-            fontWeight: t.fontWeight.normal,
-            lineHeight: t.lineHeight.normal,
-            "&::placeholder": {
-              color: t.colors.text.primary,
-              opacity: 1,
-            },
-            "&:focus": {
-              outline: "none",
+            flexDirection: "row",
+            alignItems: "center",
+            gap: t.space.md,
+            paddingInline: t.space.sm,
+            "&:hover": {
+              backgroundColor: t.surface.lvl1,
             },
           })}
-          placeholder="Symbols"
+        >
+          <h2
+            mix={[
+              css({
+                margin: 0,
+                color: t.colors.text.primary,
+                fontSize: t.fontSize.md,
+                fontWeight: t.fontWeight.normal,
+                lineHeight: t.lineHeight.normal,
+              }),
+            ]}
+          >
+            {lineNumber}.
+          </h2>
+          <input mix={[lineField, css({ flex: "1" })]} placeholder="Symbols" type="text" />
+        </div>
+        <input
+          mix={[
+            lineField,
+            css({
+              paddingInline: t.space.sm,
+              "&:hover": {
+                backgroundColor: t.surface.lvl1,
+              },
+            }),
+          ]}
+          placeholder="Annotation"
           type="text"
         />
       </div>
