@@ -1,6 +1,7 @@
 import { css } from "pitlane/theme";
 import { type Handle, on } from "remix/component";
 
+import { routes } from "#app/routes.ts";
 import { t } from "#app/theme.ts";
 
 export type ProblemState = "solved" | "error" | "unsolved";
@@ -12,7 +13,9 @@ export interface Problem {
 }
 
 export interface ProblemListProps {
+  module: string;
   problems: Problem[];
+  selected?: string;
 }
 
 const stateColor: Record<ProblemState, string> = {
@@ -22,10 +25,10 @@ const stateColor: Record<ProblemState, string> = {
 };
 
 export function ProblemList(handle: Handle<ProblemListProps>) {
-  let selected = handle.props.problems[0]?.number;
+  let selected = handle.props.selected ?? handle.props.problems[0]?.number;
 
   return () => {
-    let { problems } = handle.props;
+    let { module, problems } = handle.props;
 
     return (
       <ul
@@ -43,8 +46,13 @@ export function ProblemList(handle: Handle<ProblemListProps>) {
 
           return (
             <li key={`${problem.number}:${problem.state}`}>
-              <button
-                type="button"
+              <a
+                href={routes.module.problem.href({ name: module, problem: problem.number })}
+                data-rmx-src={routes.module.problemContent.href({
+                  name: module,
+                  problem: problem.number,
+                })}
+                data-rmx-target="module"
                 mix={[
                   on("click", () => {
                     selected = problem.number;
@@ -70,7 +78,7 @@ export function ProblemList(handle: Handle<ProblemListProps>) {
                 ]}
               >
                 {label}: {problem.problem}
-              </button>
+              </a>
             </li>
           );
         })}

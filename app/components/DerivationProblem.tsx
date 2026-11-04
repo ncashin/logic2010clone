@@ -1,6 +1,7 @@
 import { css } from "pitlane/theme";
 import type { Handle } from "remix/component";
 
+import type { Problem } from "#app/components/ProblemList.tsx";
 import { t } from "#app/theme.ts";
 
 const lineField = css({
@@ -24,13 +25,12 @@ const lineField = css({
 });
 
 export interface DerivationProblemProps {
-  number: string;
-  problem: string;
+  problem: Problem;
 }
 
 export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
   return () => {
-    let { number, problem } = handle.props;
+    let { problem } = handle.props;
 
     return (
       <div mix={css({ paddingInline: t.space.xl, paddingBlock: t.space.lg,  })}>
@@ -48,9 +48,9 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
             }),
           ]}
         >
-          Derivation {number}: {problem}
+          Derivation {problem.number}: {problem.problem}
         </h2>
-        <DerivationRow lineNumber={1}/>
+        <DerivationRow lineNumber={1} />
         
       </div>
     );

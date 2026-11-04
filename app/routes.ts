@@ -7,5 +7,7 @@ export let routes = route({
     module: route({
         show: get(`${import.meta.env.BASE_URL}modules/:name`),
         content: get(`${import.meta.env.BASE_URL}modules/:name/content`),
+        problem: get(`${import.meta.env.BASE_URL}modules/:name/:problem`),
+        problemContent: get(`${import.meta.env.BASE_URL}modules/:name/:problem/content`),
     }),
 });

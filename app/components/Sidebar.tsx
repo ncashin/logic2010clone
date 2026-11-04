@@ -5,25 +5,10 @@ import { Frame, type Handle, on } from "remix/component";
 import type { GuestBookEntry } from "#app/data/schemas.ts";
 
 import { Icon } from "#app/components/Icon.tsx";
-import { ProblemList, type Problem } from "#app/components/ProblemList.tsx";
+import { ProblemList } from "#app/components/ProblemList.tsx";
+import { problems } from "#app/data/problems.ts";
 import { routes } from "#app/routes.ts";
 import { t } from "#app/theme.ts";
-
-const problems: Problem[] = [
-  { number: "1.0001", problem: "~P. Q → P ∴ ~Q", state: "solved" },
-  { number: "1.0002", problem: "~~(P → Q). P ∴ Q", state: "solved" },
-  { number: "1.0003", problem: "P. R → ~Q. P → Q ∴ ~R", state: "solved" },
-  { number: "1.0004", problem: "P → (Q → R). (Q → R) → S. ~S ∴ ~P", state: "solved" },
-  { number: "1.001", problem: "~Q ∴ (P → Q) → ~P", state: "solved" },
-  { number: "1.001EG1", problem: "~Q ∴ (P → Q) → ~P", state: "solved" },
-  { number: "1.001EG2", problem: "~Q ∴ (P → Q) → ~P", state: "solved" },
-  { number: "1.002", problem: "P → Q. Q → R ∴ P → R", state: "solved" },
-  { number: "1.002EG1", problem: "P → Q. Q → R ∴ P → R", state: "solved" },
-  { number: "1.002EG2", problem: "P → Q. Q → R ∴ P → R", state: "solved" },
-  { number: "1.003", problem: "R → Q. R → ~Q ∴ ~R", state: "error" },
-  { number: "1.004", problem: "P → ~Q. R → Q ∴ P → ~R", state: "solved" },
-  { number: "1.004EG1", problem: "P → ~Q. R → Q ∴ P → ~R", state: "solved" },
-];
 
 const modules = [
   { name: "Derivation", icon: GitBranch },
@@ -49,6 +34,7 @@ function moduleContentHREF(name: string) {
 export interface SidebarProps {
   entries: GuestBookEntry[];
   module?: string;
+  problem?: string;
 }
 
 function moduleName(slug: string | undefined) {
@@ -57,7 +43,7 @@ function moduleName(slug: string | undefined) {
 
 export function Sidebar(handle: Handle<SidebarProps>) {
   let selectedModule = moduleName(handle.props.module);
-  let showProblems = false;
+  let showProblems = handle.props.problem != null;
 
   return () => {
 
@@ -267,12 +253,26 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                 }),
               ]}
             >
-              <ProblemList problems={problems} />
+              <ProblemList
+                module={moduleSlug(selectedModule)}
+                problems={problems}
+                selected={handle.props.problem}
+              />
             </div>
           </div>
         </aside>
         <main mix={[css({ flex: "1" })]}>
-          <Frame name="module" src={moduleContentHREF(selectedModule)} />
+          <Frame
+            name="module"
+            src={
+              handle.props.problem
+                ? routes.module.problemContent.href({
+                    name: moduleSlug(selectedModule),
+                    problem: handle.props.problem,
+                  })
+                : moduleContentHREF(selectedModule)
+            }
+          />
         </main>
       </div>
     );
