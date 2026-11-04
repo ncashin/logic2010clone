@@ -261,7 +261,7 @@ export function Sidebar(handle: Handle<SidebarProps>) {
             </div>
           </div>
         </aside>
-        <main mix={[css({ flex: "1" })]}>
+        <main mix={[css({ flex: "1", minWidth: "0" })]}>
           <Frame
             name="module"
             src={
