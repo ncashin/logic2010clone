@@ -3,6 +3,7 @@ import { createRouter, MiddlewareContext } from "remix/router";
 import { render } from "remix/spa";
 
 import guestBook from "#app/actions/guest-book.tsx";
+import modulePage from "#app/actions/module.tsx";
 import { NotFound } from "#app/components/NotFound.tsx";
 import { loadStorage } from "#app/middleware/storage.ts";
 import { routes } from "#app/routes.ts";
@@ -35,3 +36,4 @@ export let router = createRouter<AppContext>({
 });
 
 router.map(routes.guestBook, guestBook);
+router.map(routes.module, modulePage);
