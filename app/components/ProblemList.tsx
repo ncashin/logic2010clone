@@ -62,6 +62,10 @@ export function ProblemList(handle: Handle<ProblemListProps>) {
                     backgroundColor:
                       selected === problem.number ? "#c5d8f0" : "transparent",
                     cursor: "pointer",
+                    "&:hover": {
+                      backgroundColor:
+                        selected === problem.number ? "#c5d8f0" : "#e4eef8",
+                    },
                   }),
                 ]}
               >

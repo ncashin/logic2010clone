@@ -236,6 +236,11 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                       color: t.colors.choice.ink,
                       backgroundColor:
                         selectedModule === module.name ? "#c5d8f0" : "transparent",
+                      cursor: "pointer",
+                      "&:hover": {
+                        backgroundColor:
+                          selectedModule === module.name ? "#c5d8f0" : "#e4eef8",
+                      },
                     }),
                   ]}
                 >
