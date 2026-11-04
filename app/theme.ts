@@ -6,11 +6,9 @@ import * as s from "pitlane/theme/schema";
  * by `<Theme />`.
  *
  * The schema names each group's token type, and the token values are the CSS
- * they become. Dark mode lives in `modes.dark`: the base values are the light
- * palette, and the dark mode overrides only the colors that differ. `<Theme />`
- * emits a `:root` block plus one `@media (prefers-color-scheme: dark)` block,
- * so the OS appearance setting flips the variables with no attribute selectors
- * and no JavaScript.
+ * they become. The base values are the light palette. `<Theme />` emits a
+ * `:root` block, so the page stays black text on white regardless of the OS
+ * appearance setting.
  *
  * Tokens that reference other tokens are declared in the `extend` layer, where
  * the base accessor is in scope. Each one stays a `var()` reference, so a dark
@@ -71,7 +69,7 @@ export let { token: t, Theme } = createTheme({
         layout: {
             section: "32px",
             block: "48px",
-            page: "64px",
+            page: "0.75rem",
         },
         size: {
             logo: "40px",
@@ -79,6 +77,7 @@ export let { token: t, Theme } = createTheme({
             prose: "512px",
             full: "100%",
             screen: "100vh",
+            choice: "260px",
         },
         radius: {
             none: "0px",
@@ -139,6 +138,19 @@ export let { token: t, Theme } = createTheme({
             },
             focus: { ring: "#3b82f6" },
             overlay: { scrim: "rgb(0 0 0 / 0.45)" },
+            /**
+             * Module chooser. Fixed classic chrome: blue ink, gray canvas,
+             * raised faces. It does not follow the light/dark page palette.
+             */
+            choice: {
+                canvas: "#d0d0d0",
+                ink: "#0000cc",
+                face: "#e8e8e8",
+                faceHover: "#f4f4f4",
+                faceActive: "#dcdcdc",
+                edge: "#b0b0b0",
+                rule: "#0000cc",
+            },
             action: {
                 primary: {
                     background: "#2563eb",
@@ -160,57 +172,6 @@ export let { token: t, Theme } = createTheme({
                     backgroundActive: "#991b1b",
                     foreground: "#ffffff",
                     border: "#dc2626",
-                },
-            },
-        },
-    },
-    modes: {
-        dark: {
-            tokens: {
-                surface: {
-                    lvl0: "#0a0a0a",
-                    lvl1: "#111827",
-                    lvl2: "#1f2937",
-                    lvl3: "#374151",
-                    lvl4: "#4b5563",
-                },
-                colors: {
-                    text: {
-                        primary: "#f3f4f6",
-                        secondary: "#d1d5db",
-                        muted: "#9ca3af",
-                        warning: "#f87171",
-                        link: "#60a5fa",
-                        linkHover: "#93c5fd",
-                    },
-                    highlight: { inset: "rgb(255 255 255 / 0.04)" },
-                    border: {
-                        subtle: "#1f2937",
-                        default: "#374151",
-                        strong: "#4b5563",
-                    },
-                    focus: { ring: "#60a5fa" },
-                    action: {
-                        primary: {
-                            background: "#3b82f6",
-                            backgroundHover: "#2563eb",
-                            backgroundActive: "#1d4ed8",
-                            border: "#3b82f6",
-                        },
-                        secondary: {
-                            background: "#18181b",
-                            backgroundHover: "#27272a",
-                            backgroundActive: "#3f3f46",
-                            foreground: "#f3f4f6",
-                            border: "#374151",
-                        },
-                        danger: {
-                            background: "#ef4444",
-                            backgroundHover: "#dc2626",
-                            backgroundActive: "#b91c1c",
-                            border: "#ef4444",
-                        },
-                    },
                 },
             },
         },

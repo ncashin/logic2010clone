@@ -3,13 +3,13 @@
 
 @layer rmx-reset {
     :root {
-        color-scheme: light dark;
+        color-scheme: light;
     }
 
     /*
       Base document styles. They live in the reset layer so css() mixins (layer
       `rmx`) win, and reference the custom properties <Theme /> installs, which
-      flip with prefers-color-scheme.
+      stay on the light palette.
     */
 
     body {
