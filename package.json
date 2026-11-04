@@ -7,6 +7,7 @@
     },
     "dependencies": {
         "idb-keyval": "^6.2.2",
+        "lucide": "^1.67.0",
         "pitlane": "^1.0.0-alpha.2",
         "remix": "3.0.0"
     },
