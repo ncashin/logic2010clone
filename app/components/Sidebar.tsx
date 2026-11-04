@@ -1,12 +1,29 @@
-import { Ban, Braces, GitBranch, ListChecks, Table2, Variable } from "lucide";
+import { ArrowLeft, Ban, Braces, GitBranch, ListChecks, Table2, Variable } from "lucide";
 import { css } from "pitlane/theme";
 import { Frame, type Handle, on } from "remix/component";
 
 import type { GuestBookEntry } from "#app/data/schemas.ts";
 
 import { Icon } from "#app/components/Icon.tsx";
+import { ProblemList, type Problem } from "#app/components/ProblemList.tsx";
 import { routes } from "#app/routes.ts";
 import { t } from "#app/theme.ts";
+
+const problems: Problem[] = [
+  { number: "1.0001", problem: "~P. Q → P ∴ ~Q", state: "solved" },
+  { number: "1.0002", problem: "~~(P → Q). P ∴ Q", state: "solved" },
+  { number: "1.0003", problem: "P. R → ~Q. P → Q ∴ ~R", state: "solved" },
+  { number: "1.0004", problem: "P → (Q → R). (Q → R) → S. ~S ∴ ~P", state: "solved" },
+  { number: "1.001", problem: "~Q ∴ (P → Q) → ~P", state: "solved" },
+  { number: "1.001EG1", problem: "~Q ∴ (P → Q) → ~P", state: "solved" },
+  { number: "1.001EG2", problem: "~Q ∴ (P → Q) → ~P", state: "solved" },
+  { number: "1.002", problem: "P → Q. Q → R ∴ P → R", state: "solved" },
+  { number: "1.002EG1", problem: "P → Q. Q → R ∴ P → R", state: "solved" },
+  { number: "1.002EG2", problem: "P → Q. Q → R ∴ P → R", state: "solved" },
+  { number: "1.003", problem: "R → Q. R → ~Q ∴ ~R", state: "error" },
+  { number: "1.004", problem: "P → ~Q. R → Q ∴ P → ~R", state: "solved" },
+  { number: "1.004EG1", problem: "P → ~Q. R → Q ∴ P → ~R", state: "solved" },
+];
 
 const modules = [
   { name: "Derivation", icon: GitBranch },
@@ -39,7 +56,8 @@ function moduleName(slug: string | undefined) {
 }
 
 export function Sidebar(handle: Handle<SidebarProps>) {
-    let selectedModule = moduleName(handle.props.module);
+  let selectedModule = moduleName(handle.props.module);
+  let showProblems = false;
 
   return () => {
 
@@ -60,74 +78,195 @@ export function Sidebar(handle: Handle<SidebarProps>) {
             css({
               display: "flex",
               flexDirection: "column",
-              padding: t.layout.page,
+              width: t.size.column,
+              flexShrink: "0",
+              overflow: "hidden",
               borderRightWidth: t.space.px,
               borderRightStyle: "solid",
               borderRightColor: t.colors.border.subtle,
+              backgroundColor: t.colors.choice.faceHover,
             }),
           ]}
         >
-          <h1
+          <div
             mix={[
               css({
-                fontSize: t.fontSize.xl,
-                fontWeight: t.fontWeight.bold,
-                marginBottom: t.space.xl,
+                display: "flex",
+                flexDirection: "row",
+                alignItems: "center",
+                paddingInline: t.space.md,
+                paddingBlock: t.space.md,
               }),
             ]}
           >
-            Logic 2010
-          </h1>
-          <h2
-            mix={[
-              css({
-                fontSize: t.fontSize.md,
-                fontWeight: t.fontWeight.semibold,
-                marginBottom: t.space.xl,
-              }),
-            ]}
-          >
-            Problem Sets
-          </h2>
-          {modules.map((module) => (
-            <a
-              key={module.name}
-              href={moduleHREF(module.name)}
-              data-rmx-src={moduleContentHREF(module.name)}
-              data-rmx-target="module"
+            <button
+              type="button"
+              aria-label="Back"
               mix={[
                 on("click", () => {
-                    selectedModule = module.name;
+                  showProblems = false;
                   handle.update();
                 }),
                 css({
                   display: "flex",
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: t.space.sm,
-                  paddingInline: t.space.xl,
-                  paddingBlock: t.space.sm,
-                  borderRadius: t.radius.md,
-                  backgroundColor:
-                    selectedModule === module.name ? t.surface.lvl2 : undefined,
-                  "&:hover": {
-                    backgroundColor:
-                      selectedModule === module.name
-                        ? t.surface.lvl2
-                        : t.surface.lvl1,
-                  },
+                  flexShrink: "0",
+                  width: showProblems ? t.space.xl : "0px",
+                  marginRight: showProblems ? t.space.sm : "0px",
+                  opacity: showProblems ? 1 : 0,
+                  padding: 0,
+                  overflow: "hidden",
+                  border: "none",
+                  backgroundColor: "transparent",
+                  color: "inherit",
+                  cursor: "pointer",
+                  pointerEvents: showProblems ? "auto" : "none",
+                  transition: "width 220ms ease, margin-right 220ms ease, opacity 220ms ease",
                 }),
               ]}
             >
               <Icon
-                icon={module.icon}
-                mix={css({ width: t.space.xl, height: t.space.xl })}
+                icon={ArrowLeft}
+                mix={css({
+                  width: t.space.xl,
+                  height: t.space.xl,
+                  strokeWidth: 2.5,
+                })}
               />
-              {module.name}
-            </a>
-          ))}
+            </button>
+            <div mix={[css({ display: "grid", flex: "1" })]}>
+              <h1
+                mix={[
+                  css({
+                    gridArea: "1 / 1",
+                    margin: 0,
+                    fontSize: t.fontSize.xl,
+                    fontWeight: t.fontWeight.bold,
+                    opacity: showProblems ? 0 : 1,
+                    transition: "opacity 220ms ease",
+                  }),
+                ]}
+              >
+                Logic 2010
+              </h1>
+              <h1
+                mix={[
+                  css({
+                    gridArea: "1 / 1",
+                    margin: 0,
+                    fontSize: t.fontSize.xl,
+                    fontWeight: t.fontWeight.bold,
+                    opacity: showProblems ? 1 : 0,
+                    transition: "opacity 220ms ease",
+                  }),
+                ]}
+              >
+                {selectedModule}
+              </h1>
+            </div>
+          </div>
+          <div mix={[css({ display: "grid" })]}>
+            <h2
+              mix={[
+                css({
+                  gridArea: "1 / 1",
+                  margin: 0,
+                  paddingInline: t.space.md,
+                  paddingBlock: t.space.xs,
+                  fontSize: t.fontSize.sm,
+                  fontWeight: t.fontWeight.semibold,
+                  opacity: showProblems ? 0 : 1,
+                  transition: "opacity 220ms ease",
+                }),
+              ]}
+            >
+              Problem Sets
+            </h2>
+            <h2
+              mix={[
+                css({
+                  gridArea: "1 / 1",
+                  margin: 0,
+                  paddingInline: t.space.md,
+                  paddingBlock: t.space.xs,
+                  fontSize: t.fontSize.sm,
+                  fontWeight: t.fontWeight.semibold,
+                  opacity: showProblems ? 1 : 0,
+                  transition: "opacity 220ms ease",
+                }),
+              ]}
+            >
+              Problems
+            </h2>
+          </div>
+          <div mix={[css({ position: "relative", flex: "1", minHeight: "0" })]}>
+            <div
+              mix={[
+                css({
+                  position: "absolute",
+                  inset: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  overflow: "auto",
+                  opacity: showProblems ? 0 : 1,
+                  pointerEvents: showProblems ? "none" : "auto",
+                  transition: "opacity 220ms ease",
+                }),
+              ]}
+            >
+              {modules.map((module) => (
+                <a
+                  key={module.name}
+                  href={moduleHREF(module.name)}
+                  data-rmx-src={moduleContentHREF(module.name)}
+                  data-rmx-target="module"
+                  mix={[
+                    on("click", () => {
+                      selectedModule = module.name;
+                      showProblems = true;
+                      handle.update();
+                    }),
+                    css({
+                      display: "flex",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: t.space.sm,
+                      width: t.size.full,
+                      paddingInline: t.space.md,
+                      paddingBlock: t.space.xs,
+                      color: t.colors.choice.ink,
+                      backgroundColor:
+                        selectedModule === module.name ? "#c5d8f0" : "transparent",
+                    }),
+                  ]}
+                >
+                  <Icon
+                    icon={module.icon}
+                    mix={css({ width: t.space.xl, height: t.space.xl })}
+                  />
+                  {module.name}
+                </a>
+              ))}
+            </div>
+            <div
+              mix={[
+                css({
+                  position: "absolute",
+                  inset: 0,
+                  overflow: "auto",
+                  fontFamily: t.fontFamily.mono,
+                  fontSize: t.fontSize.sm,
+                  lineHeight: t.lineHeight.normal,
+                  opacity: showProblems ? 1 : 0,
+                  pointerEvents: showProblems ? "auto" : "none",
+                  transition: "opacity 220ms ease",
+                }),
+              ]}
+            >
+              <ProblemList problems={problems} />
+            </div>
+          </div>
         </aside>
-        <main mix={[css({ flex: "1", padding: t.layout.page })]}>
+        <main mix={[css({ flex: "1" })]}>
           <Frame name="module" src={moduleContentHREF(selectedModule)} />
         </main>
       </div>
