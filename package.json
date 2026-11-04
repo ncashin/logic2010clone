@@ -1,0 +1,24 @@
+{
+    "name": "pitlane-github-pages",
+    "private": true,
+    "type": "module",
+    "imports": {
+        "#app/*": "./app/*"
+    },
+    "dependencies": {
+        "idb-keyval": "^6.2.2",
+        "pitlane": "^1.0.0-alpha.2",
+        "remix": "3.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^25.5.0",
+        "eslint-plugin-perfectionist": "^5.8.0",
+        "eslint-plugin-prefer-let": "^4.2.2",
+        "oxlint-tsgolint": "^7.0.2001",
+        "typescript": "^7.0.2",
+        "vite": "npm:@voidzero-dev/vite-plus-core@^1.0.0",
+        "vite-plugin-devtools-json": "^1.0.0",
+        "vite-plus": "^1.0.0"
+    },
+    "packageManager": "pnpm@11.17.0"
+}
