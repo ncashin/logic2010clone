@@ -1,4 +1,18 @@
-import { ArrowLeft, Ban, Braces, GitBranch, ListChecks, Table2, Variable } from "lucide";
+import {
+  ArrowLeft,
+  Ban,
+  Braces,
+  Clipboard,
+  FileText,
+  GitBranch,
+  Library,
+  ListChecks,
+  Notebook,
+  NotebookPen,
+  ScrollText,
+  Table2,
+  Variable,
+} from "lucide";
 import { css } from "pitlane/theme";
 import { Frame, type Handle, on } from "remix/component";
 
@@ -17,6 +31,15 @@ const modules = [
   { name: "Recognizing Rules", icon: ListChecks },
   { name: "Symbolization", icon: Variable },
   { name: "Truth Tables", icon: Table2 },
+] as const;
+
+const assignments = [
+  { name: "Assignment 1", icon: Clipboard },
+  { name: "Assignment 2", icon: Notebook },
+  { name: "Assignment 3", icon: NotebookPen },
+  { name: "Assignment 4", icon: FileText },
+  { name: "Assignment 5", icon: ScrollText },
+  { name: "Assignment 6", icon: Library },
 ] as const;
 
 function moduleSlug(name: string) {
@@ -81,7 +104,8 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                 flexDirection: "row",
                 alignItems: "center",
                 paddingInline: t.space.md,
-                paddingBlock: t.space.md,
+                paddingTop: t.space.xl,
+                paddingBottom: t.space.lg,
               }),
             ]}
           >
@@ -237,13 +261,52 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                   {module.name}
                 </a>
               ))}
+              <h2
+                mix={[
+                  css({
+                    margin: 0,
+                    marginTop: t.space.lg,
+                    paddingInline: t.space.md,
+                    paddingBlock: t.space.xs,
+                    fontSize: t.fontSize.sm,
+                    fontWeight: t.fontWeight.semibold,
+                  }),
+                ]}
+              >
+                Assignments
+              </h2>
+              {assignments.map((assignment) => (
+                <div
+                  key={assignment.name}
+                  mix={[
+                    css({
+                      display: "flex",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: t.space.sm,
+                      width: t.size.full,
+                      paddingInline: t.space.md,
+                      paddingBlock: t.space.xs,
+                      color: t.colors.choice.ink,
+                    }),
+                  ]}
+                >
+                  <Icon
+                    icon={assignment.icon}
+                    mix={css({ width: t.space.xl, height: t.space.xl })}
+                  />
+                  {assignment.name}
+                </div>
+              ))}
             </div>
             <div
               mix={[
                 css({
                   position: "absolute",
                   inset: 0,
-                  overflow: "auto",
+                  display: "flex",
+                  flexDirection: "column",
+                  overflow: "hidden",
                   fontFamily: t.fontFamily.mono,
                   fontSize: t.fontSize.sm,
                   lineHeight: t.lineHeight.normal,
