@@ -10,4 +10,8 @@ export let routes = route({
         problem: get(`${import.meta.env.BASE_URL}modules/:name/:problem`),
         problemContent: get(`${import.meta.env.BASE_URL}modules/:name/:problem/content`),
     }),
+    assignment: route({
+        show: get(`${import.meta.env.BASE_URL}assignments/:name`),
+        content: get(`${import.meta.env.BASE_URL}assignments/:name/content`),
+    }),
 });

@@ -54,10 +54,15 @@ function moduleContentHREF(name: string) {
   return routes.module.content.href({ name: moduleSlug(name) });
 }
 
+function assignmentSlug(name: string) {
+  return name.toLowerCase().replaceAll(" ", "-");
+}
+
 export interface SidebarProps {
   entries: GuestBookEntry[];
   module?: string;
   problem?: string;
+  assignment?: string;
 }
 
 function moduleName(slug: string | undefined) {
@@ -276,8 +281,11 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                 Assignments
               </h2>
               {assignments.map((assignment) => (
-                <div
+                <a
                   key={assignment.name}
+                  href={routes.assignment.show.href({ name: assignmentSlug(assignment.name) })}
+                  data-rmx-src={routes.assignment.content.href({ name: assignmentSlug(assignment.name) })}
+                  data-rmx-target="module"
                   mix={[
                     css({
                       display: "flex",
@@ -288,6 +296,17 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                       paddingInline: t.space.md,
                       paddingBlock: t.space.xs,
                       color: t.colors.choice.ink,
+                      backgroundColor:
+                        handle.props.assignment === assignmentSlug(assignment.name)
+                          ? "#c5d8f0"
+                          : "transparent",
+                      cursor: "pointer",
+                      "&:hover": {
+                        backgroundColor:
+                          handle.props.assignment === assignmentSlug(assignment.name)
+                            ? "#c5d8f0"
+                            : "#e4eef8",
+                      },
                     }),
                   ]}
                 >
@@ -296,7 +315,7 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                     mix={css({ width: t.space.xl, height: t.space.xl })}
                   />
                   {assignment.name}
-                </div>
+                </a>
               ))}
             </div>
             <div
@@ -328,12 +347,14 @@ export function Sidebar(handle: Handle<SidebarProps>) {
           <Frame
             name="module"
             src={
-              handle.props.problem
-                ? routes.module.problemContent.href({
-                    name: moduleSlug(selectedModule),
-                    problem: handle.props.problem,
-                  })
-                : moduleContentHREF(selectedModule)
+              handle.props.assignment
+                ? routes.assignment.content.href({ name: handle.props.assignment })
+                : handle.props.problem
+                  ? routes.module.problemContent.href({
+                      name: moduleSlug(selectedModule),
+                      problem: handle.props.problem,
+                    })
+                  : moduleContentHREF(selectedModule)
             }
           />
         </main>

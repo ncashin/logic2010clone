@@ -62,12 +62,9 @@ export function ProblemList(handle: Handle<ProblemListProps>) {
             flexShrink: "0",
             width: t.size.full,
             paddingInline: t.space.md,
-            paddingBlock: t.space.md,
+            paddingBlock: t.space.xs,
             backgroundColor: t.surface.lvl0,
             color: t.colors.text.muted,
-            fontFamily: t.fontFamily.sans,
-            fontSize: t.fontSize.md,
-            lineHeight: t.lineHeight.normal,
           }),
         ]}
       >
