@@ -1,6 +1,7 @@
 import { css } from "pitlane/theme";
 import type { Handle } from "remix/component";
 
+import { sectionPadding } from "#app/components/Welcome.tsx";
 import { t } from "#app/theme.ts";
 
 export interface AssignmentProps {
@@ -17,7 +18,7 @@ const cell = css({
   paddingInline: t.space.md,
   paddingBlock: t.space.sm,
   textAlign: "left",
-  whiteSpace: "nowrap",
+  whiteSpace: "normal",
   fontWeight: t.fontWeight.normal,
   color: t.colors.text.primary,
   borderBottomWidth: t.space.px,
@@ -30,11 +31,10 @@ export function Assignment(handle: Handle<AssignmentProps>) {
     <main
       mix={[
         css({
+          width: t.size.full,
           flex: "1",
           minHeight: t.size.full,
-          paddingInline: t.space.lg,
-          paddingTop: t.space.xxl,
-          paddingBottom: t.space.xl,
+          ...sectionPadding,
           overflow: "auto",
           fontFamily: t.fontFamily.sans,
           color: t.colors.text.primary,
@@ -45,7 +45,6 @@ export function Assignment(handle: Handle<AssignmentProps>) {
         mix={[
           css({
             margin: 0,
-            paddingInline: t.space.sm,
             paddingBottom: t.space.md,
             fontSize: t.fontSize.md,
             fontWeight: t.fontWeight.normal,
@@ -57,7 +56,8 @@ export function Assignment(handle: Handle<AssignmentProps>) {
       <table
         mix={[
           css({
-            width: "max-content",
+            width: t.size.full,
+            tableLayout: "fixed",
             borderCollapse: "collapse",
             fontSize: t.fontSize.md,
             lineHeight: t.lineHeight.normal,

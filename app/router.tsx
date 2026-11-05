@@ -5,6 +5,7 @@ import { render } from "remix/spa";
 import assignmentPage from "#app/actions/assignment.tsx";
 import guestBook from "#app/actions/guest-book.tsx";
 import modulePage from "#app/actions/module.tsx";
+import welcomePage from "#app/actions/welcome.tsx";
 import { NotFound } from "#app/components/NotFound.tsx";
 import { loadStorage } from "#app/middleware/storage.ts";
 import { routes } from "#app/routes.ts";
@@ -39,3 +40,4 @@ export let router = createRouter<AppContext>({
 router.map(routes.guestBook, guestBook);
 router.map(routes.module, modulePage);
 router.map(routes.assignment, assignmentPage);
+router.map(routes.welcome, welcomePage);

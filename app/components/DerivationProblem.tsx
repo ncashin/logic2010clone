@@ -9,6 +9,7 @@ import {
   checkDerivation,
   inferSymbols,
 } from "#app/logic/derivation.ts";
+import { sectionPadding } from "#app/components/Welcome.tsx";
 import { t } from "#app/theme.ts";
 
 const action = css({
@@ -402,9 +403,8 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
     return (
       <div
         mix={css({
-          paddingInline: t.space.lg,
-          paddingTop: t.space.xxl,
-          paddingBottom: t.space.xl,
+          width: t.size.full,
+          ...sectionPadding,
         })}
       >
         <div
@@ -423,7 +423,6 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                 margin: 0,
                 flex: "1",
                 minWidth: "0",
-                paddingInline: t.space.sm,
                 color: t.colors.text.primary,
                 fontSize: t.fontSize.md,
                 fontWeight: t.fontWeight.normal,

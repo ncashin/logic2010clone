@@ -88,6 +88,7 @@ export function ProblemList(handle: Handle<ProblemListProps>) {
               outline: "none",
               backgroundColor: "transparent",
               font: "inherit",
+              paddingBlock: t.space.xs,
               color: t.colors.text.primary,
               "&::placeholder": { color: t.colors.text.muted },
             }),
