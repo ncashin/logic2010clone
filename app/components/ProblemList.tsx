@@ -3,6 +3,7 @@ import { css } from "pitlane/theme";
 import { type Handle, on } from "remix/component";
 
 import { Icon } from "#app/components/Icon.tsx";
+import { problemOnAssignment } from "#app/data/assignments.ts";
 import {
   type Problem,
   type ProblemStatus,
@@ -20,6 +21,7 @@ export interface ProblemListProps {
   selected?: string;
   selectionNonce?: number;
   label?: "statement" | "typed";
+  chapters?: boolean;
   href?: (problem: Problem) => string;
   content?: (problem: Problem) => string;
 }
@@ -64,6 +66,13 @@ export function ProblemList(handle: Handle<ProblemListProps>) {
             .includes(needle),
         )
       : problems;
+    let chapters: { chapter: string; problems: Problem[] }[] = [];
+    for (let problem of visible) {
+      let chapter = problem.number.split(".")[0] ?? problem.number;
+      let group = chapters.find((item) => item.chapter === chapter);
+      if (group) group.problems.push(problem);
+      else chapters.push({ chapter, problems: [problem] });
+    }
 
     return (
       <div
@@ -120,102 +129,134 @@ export function ProblemList(handle: Handle<ProblemListProps>) {
           ]}
         />
       </div>
-      <ul
+      <div
         mix={[
           css({
-            margin: 0,
-            padding: 0,
-            listStyle: "none",
             overflow: "auto",
             flex: "1",
             minHeight: "0",
           }),
         ]}
       >
-        {visible.map((problem) => {
-          let key = problemId(problem.type, problem.number);
-          let record = progressFor(progress, problem);
-          let href =
-            handle.props.href?.(problem) ??
-            routes.module.problem.href({ name: problem.type, problem: problem.number });
+        {chapters.map((group) => (
+          <section key={group.chapter}>
+            {handle.props.chapters === false ? null : (
+            <h2
+              mix={css({
+                position: "sticky",
+                top: "0",
+                zIndex: "1",
+                margin: 0,
+                paddingInline: t.space.md,
+                paddingBlock: t.space.xs,
+                backgroundColor: t.surface.lvl2,
+                color: t.colors.text.primary,
+                fontSize: t.fontSize.sm,
+                fontWeight: t.fontWeight.semibold,
+                lineHeight: t.lineHeight.normal,
+              })}
+            >
+              Chapter {group.chapter}
+            </h2>
+            )}
+            <ul
+              mix={css({
+                margin: 0,
+                padding: 0,
+                listStyle: "none",
+              })}
+            >
+              {group.problems.map((problem) => {
+                let key = problemId(problem.type, problem.number);
+                let record = progressFor(progress, problem);
+                let onAssignment = problemOnAssignment(problem.type, problem.number);
+                let points = problem.points ?? (onAssignment ? 1 : undefined);
+                let href =
+                  handle.props.href?.(problem) ??
+                  routes.module.problem.href({ name: problem.type, problem: problem.number });
 
-          return (
-            <li key={key}>
-              <a
-                href={href}
-                data-rmx-src={
-                  handle.props.content?.(problem) ??
-                  routes.module.problemContent.href({
-                    name: problem.type,
-                    problem: problem.number,
-                  })
-                }
-                data-rmx-target="module"
-                mix={[
-                  on("click", () => {
-                    selected = key;
-                    handle.update();
-                  }),
-                  css({
-                    display: "flex",
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: t.space.sm,
-                    width: t.size.full,
-                    paddingInline: t.space.md,
-                    paddingBlock: t.space.xs,
-                    border: "none",
-                    textAlign: "left",
-                    font: "inherit",
-                    color: stateColor[record.status],
-                    backgroundColor: selected === key ? "#c5d8f0" : "transparent",
-                    textDecoration: "none",
-                    cursor: "pointer",
-                    "&:hover": {
-                      backgroundColor: selected === key ? "#c5d8f0" : "#e4eef8",
-                    },
-                  }),
-                ]}
-              >
-                <span mix={css({ minWidth: "0" })}>
-                  {problemLabel(problem, handle.props.label ?? "statement")}
-                </span>
-                <span
-                  mix={css({
-                    display: "flex",
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: t.space.sm,
-                    marginLeft: "auto",
-                    flexShrink: "0",
-                  })}
-                >
-                  {problem.points != null ? (
-                    <span
-                      mix={css({
-                        color: t.colors.text.muted,
-                      })}
+                return (
+                  <li key={key}>
+                    <a
+                      href={href}
+                      data-rmx-src={
+                        handle.props.content?.(problem) ??
+                        routes.module.problemContent.href({
+                          name: problem.type,
+                          problem: problem.number,
+                        })
+                      }
+                      data-rmx-target="module"
+                      mix={[
+                        on("click", () => {
+                          selected = key;
+                          handle.update();
+                        }),
+                        css({
+                          display: "flex",
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: t.space.sm,
+                          width: t.size.full,
+                          paddingInline: t.space.md,
+                          paddingBlock: t.space.xs,
+                          border: "none",
+                          textAlign: "left",
+                          font: "inherit",
+                          color: stateColor[record.status],
+                          backgroundColor: selected === key ? "#c5d8f0" : "transparent",
+                          textDecoration: "none",
+                          cursor: "pointer",
+                          "&:hover": {
+                            backgroundColor: selected === key ? "#c5d8f0" : "#e4eef8",
+                          },
+                        }),
+                      ]}
                     >
-                      {record.submitted ? problem.points : 0}/{problem.points}
-                      {problem.points === 1 ? "pt" : "pts"}
-                    </span>
-                  ) : null}
-                  <Icon
-                    icon={record.submitted ? CircleCheck : Circle}
-                    mix={css({
-                      width: t.fontSize.xl,
-                      height: t.fontSize.xl,
-                      flexShrink: "0",
-                      color: record.submitted ? stateColor.correct : t.colors.text.muted,
-                    })}
-                  />
-                </span>
-              </a>
-            </li>
-          );
-        })}
-      </ul>
+                      <span mix={css({ minWidth: "0" })}>
+                        {problemLabel(problem, handle.props.label ?? "statement")}
+                      </span>
+                      <span
+                        mix={css({
+                          display: "flex",
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: t.space.sm,
+                          marginLeft: "auto",
+                          flexShrink: "0",
+                        })}
+                      >
+                        {points != null ? (
+                          <span
+                            mix={css({
+                              color: t.colors.text.muted,
+                            })}
+                          >
+                            {record.submitted ? points : 0}/{points}
+                            {points === 1 ? "pt" : "pts"}
+                          </span>
+                        ) : null}
+                        {onAssignment ? (
+                          <Icon
+                            icon={record.submitted ? CircleCheck : Circle}
+                            mix={css({
+                              width: t.fontSize.xl,
+                              height: t.fontSize.xl,
+                              flexShrink: "0",
+                              color: record.submitted ? stateColor.correct : t.colors.text.muted,
+                            })}
+                          />
+                        ) : null}
+                      </span>
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ))}
+      </div>
       </div>
     );
   };

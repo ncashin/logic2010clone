@@ -100,6 +100,42 @@ export function Sidebar(handle: Handle<SidebarProps>) {
       })();
   let selectionNonce = 0;
 
+  function syncFromLocation() {
+    let parts = new URL(window.location.href).pathname.split("/").filter(Boolean);
+    let assignmentIndex = parts.indexOf("assignments");
+    if (assignmentIndex >= 0) {
+      let name = parts[assignmentIndex + 1];
+      let type = parts[assignmentIndex + 2];
+      let problem = parts[assignmentIndex + 3];
+      if (!name) return;
+      panel = "assignment";
+      selectedAssignment = decodeURIComponent(name);
+      if (type && problem && type !== "content") {
+        selectedAssignmentItem = problemId(decodeURIComponent(type), decodeURIComponent(problem));
+        selectionNonce += 1;
+      }
+      return;
+    }
+    if (parts.includes("modules")) return;
+    panel = "menu";
+  }
+
+  window.addEventListener("assignment-open", (event) => {
+    let detail = (event as CustomEvent<{ slug: string; type: string; problem: string }>).detail;
+    panel = "assignment";
+    selectedAssignment = detail.slug;
+    if (detail.type && detail.problem) {
+      selectedAssignmentItem = problemId(detail.type, detail.problem);
+      selectionNonce += 1;
+    }
+    handle.update();
+  }, { signal: handle.signal });
+
+  window.navigation?.addEventListener("navigatesuccess", () => {
+    syncFromLocation();
+    handle.update();
+  }, { signal: handle.signal });
+
   return () => {
 
     return (
@@ -549,6 +585,7 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                 selected={selectedAssignmentItem}
                 selectionNonce={selectionNonce}
                 label="typed"
+                chapters={false}
                 href={(problem) =>
                   routes.assignment.problem.href({
                     name: selectedAssignment ?? "",
