@@ -31,6 +31,18 @@ const action = css({
   "&:hover": { backgroundColor: "#c5d8f0" },
 });
 
+const resetAction = css({
+  backgroundColor: t.colors.action.danger.background,
+  color: t.colors.action.danger.foreground,
+  "&:hover": { backgroundColor: t.colors.action.danger.backgroundHover },
+});
+
+const submitAction = css({
+  backgroundColor: "#16a34a",
+  color: "#ffffff",
+  "&:hover": { backgroundColor: "#15803d" },
+});
+
 const lineField = css({
   margin: 0,
   padding: 0,
@@ -107,6 +119,8 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
   let dirty = false;
   let helpOpen = false;
   let submitted = false;
+  let submission = "";
+  let showSubmission = false;
 
   handle.queueTask(() => {
     void restore(handle.props.problem);
@@ -128,29 +142,33 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
     loaded = `${problem.type}:${problem.number}`;
     if (restored) lines = restored;
     submitted = saved?.submitted ?? false;
+    submission = saved?.submission ?? "";
     handle.update();
   }
 
   function persist(
     status?: "unattempted" | "in-progress" | "incorrect" | "correct",
     submitted?: boolean,
+    submission?: string,
   ) {
     let { problem } = handle.props;
     return writeProgress(problem.type, problem.number, {
       status: status ?? (hasWork(lines) ? "in-progress" : "unattempted"),
       work: JSON.stringify(lines),
       ...(submitted == null ? {} : { submitted }),
+      ...(submission == null ? {} : { submission }),
     });
   }
 
   function saveChange(
     status?: "unattempted" | "in-progress" | "incorrect" | "correct",
     submitted?: boolean,
+    submission?: string,
   ) {
     dirty = true;
     void handle.update().then((signal) => {
       if (signal.aborted) return;
-      void persist(status, submitted);
+      void persist(status, submitted, submission);
     });
   }
 
@@ -165,11 +183,17 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
       hoverLine = null;
       dirty = false;
       submitted = false;
+      submission = "";
+      showSubmission = false;
       void restore(problem);
     }
 
-    function finished(checkedLines: ReturnType<typeof checkDerivation>["lines"], index: number) {
-      let line = lines[index];
+    function finished(
+      source: DerivationLine[],
+      checkedLines: ReturnType<typeof checkDerivation>["lines"],
+      index: number,
+    ) {
+      let line = source[index];
       let checked = checkedLines[index];
       if (!line || !checked || checked.error) return false;
       if (checked.closesShow) return true;
@@ -185,14 +209,14 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
       lastIndex > 0 &&
       last.symbols.trim() === "" &&
       last.annotation.trim() === "" &&
-      !finished(result.lines, lastIndex - 1)
+      !finished(lines, result.lines, lastIndex - 1)
     ) {
       lines.pop();
       result = checkDerivation(problem.problem, lines);
       last = lines.at(-1);
       lastIndex = lines.length - 1;
     }
-    if (last && finished(result.lines, lastIndex) && (last.symbols.trim() !== "" || last.annotation.trim() !== "")) {
+    if (last && finished(lines, result.lines, lastIndex) && (last.symbols.trim() !== "" || last.annotation.trim() !== "")) {
       lines.push({ symbols: "", annotation: "", depth: 0, entered: false });
       result = checkDerivation(problem.problem, lines);
     }
@@ -218,6 +242,10 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
       columnGap: t.space.md,
     });
 
+    let active = lines;
+    let activeResult = result;
+    let readOnly = false;
+
     function watchLine(index: number) {
       return [
         on("mouseenter", () => {
@@ -234,7 +262,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
     }
 
     function renderRow(index: number, line: DerivationLine, rowNumber: number) {
-      let checked = result.lines[index];
+      let checked = activeResult.lines[index];
       let showCaret = checked?.boxed != null && hoverLine === index;
       let placed = `${rowNumber}`;
       return (
@@ -332,6 +360,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                     }),
                     ...watchLine(index),
                     on("input", (event) => {
+                      if (readOnly) return;
                       let typed = event.currentTarget.value;
                       line.symbols = crossed && showText ? `${showText[1]}${typed}` : typed;
                       saveChange();
@@ -339,6 +368,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                   ]}
                   data-line={index}
                   placeholder={line.depth > 0 ? "" : "Formula"}
+                  readOnly={readOnly}
                   type="text"
                   value={crossed && showText ? showText[2] : line.symbols}
                 />
@@ -359,24 +389,26 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
               }),
               ...watchLine(index),
               on("input", (event) => {
+                if (readOnly) return;
                 line.annotation = event.currentTarget.value;
                 line.entered = false;
                 saveChange();
               }),
               on("keydown", (event) => {
-                if (event.key !== "Enter") return;
+                if (readOnly || event.key !== "Enter") return;
                 event.preventDefault();
                 line.entered = true;
                 let symbols = inferSymbols(problem.problem, lines, index);
                 if (symbols !== null) line.symbols = symbols;
                 let next = checkDerivation(problem.problem, lines);
-                if (finished(next.lines, index)) focusAnnotation = index + 1;
+                if (finished(lines, next.lines, index)) focusAnnotation = index + 1;
                 saveChange();
               }),
             ]}
             data-annotation={index}
             data-line={index}
             placeholder="Annotation"
+            readOnly={readOnly}
             title={checked?.error ?? ""}
             type="text"
             value={line.annotation}
@@ -387,14 +419,14 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
 
     function boxGuides(index: number) {
       let guides = [];
-      let depth = lines[index]?.depth ?? 0;
+      let depth = active[index]?.depth ?? 0;
       for (let show = index - 1; show >= 0 && depth > 0; show -= 1) {
-        if ((lines[show]?.depth ?? 0) !== depth - 1) continue;
+        if ((active[show]?.depth ?? 0) !== depth - 1) continue;
         let level = depth;
         depth -= 1;
         let stop = show + 1;
-        while (stop < lines.length && (lines[stop]?.depth ?? 0) > (lines[show]?.depth ?? 0)) stop += 1;
-        let boxed = Boolean(result.lines[show]?.boxed) && !collapsed.has(show);
+        while (stop < active.length && (active[stop]?.depth ?? 0) > (active[show]?.depth ?? 0)) stop += 1;
+        let boxed = Boolean(activeResult.lines[show]?.boxed) && !collapsed.has(show);
         let color = boxed ? t.colors.text.primary : "transparent";
         let inset = `${level * 24}px`;
         guides.push(
@@ -460,9 +492,9 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
     }
 
     function hidden(index: number) {
-      let depth = lines[index]?.depth ?? 0;
+      let depth = active[index]?.depth ?? 0;
       for (let show = index - 1; show >= 0 && depth > 0; show -= 1) {
-        if ((lines[show]?.depth ?? 0) !== depth - 1) continue;
+        if ((active[show]?.depth ?? 0) !== depth - 1) continue;
         if (collapsed.has(show)) return true;
         depth -= 1;
       }
@@ -472,12 +504,12 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
     function renderTree() {
       let nodes = [];
       let rowNumber = 1;
-      for (let index = 0; index < lines.length; index += 1) {
-        let line = lines[index];
+      for (let index = 0; index < active.length; index += 1) {
+        let line = active[index];
         if (!line || hidden(index)) continue;
         nodes.push(renderRow(index, line, rowNumber));
         rowNumber += 1;
-        if (result.lines[index]?.boxed && collapsed.has(index)) {
+        if (activeResult.lines[index]?.boxed && collapsed.has(index)) {
           nodes.push(
             <div
               key={`ellipsis-${index}`}
@@ -502,6 +534,29 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
       );
     }
 
+    function renderSubmission() {
+      let saved = parseWork(submission);
+      if (!saved) return null;
+      active = saved.map((line) => ({ ...line }));
+      activeResult = checkDerivation(problem.problem, active);
+      let last = active.at(-1);
+      let lastIndex = active.length - 1;
+      if (
+        last &&
+        finished(active, activeResult.lines, lastIndex) &&
+        (last.symbols.trim() !== "" || last.annotation.trim() !== "")
+      ) {
+        active.push({ symbols: "", annotation: "", depth: 0, entered: false });
+        activeResult = checkDerivation(problem.problem, active);
+      }
+      readOnly = true;
+      let tree = renderTree();
+      active = lines;
+      activeResult = result;
+      readOnly = false;
+      return tree;
+    }
+
     return (
       <div
         mix={css({
@@ -513,15 +568,19 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
           mix={css({
             display: "flex",
             flexDirection: "row",
-            alignItems: "center",
+            alignItems: "flex-start",
             justifyContent: "space-between",
             gap: t.space.md,
-            paddingBottom: t.space.md,
+            paddingBottom: t.space.xxl,
           })}
         >
           <h2
             mix={[
               css({
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "baseline",
+                gap: "1.25em",
                 margin: 0,
                 flex: "1",
                 minWidth: "0",
@@ -532,22 +591,38 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
               }),
             ]}
           >
-            Derivation {problem.number}:{" "}
+            <span mix={css({ alignSelf: "flex-start", color: t.colors.text.secondary, fontSize: t.fontSize.lg })}>
+              Derivation {problem.number}
+            </span>
             {parts ? (
               <span
                 mix={css({
                   display: "inline-flex",
-                  alignItems: "baseline",
-                  gap: "1.1em",
+                  flexWrap: "wrap",
+                  alignItems: "flex-start",
+                  gap: "1.75em",
+                  fontSize: t.fontSize.lg,
                 })}
               >
-                {parts.premises.map((premise) => (
-                  <span>{premise}.</span>
+                {parts.premises.map((premise, index) => (
+                  <span
+                    mix={css({
+                      display: "inline-flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: t.space.xs,
+                    })}
+                  >
+                    {premise}.
+                    <span mix={css({ color: t.colors.text.muted, fontSize: t.fontSize.sm })}>
+                      pr{index + 1}
+                    </span>
+                  </span>
                 ))}
-                <span>∴ {parts.conclusion}</span>
+                <span mix={css({ alignSelf: "flex-start" })}>∴ {parts.conclusion}</span>
               </span>
             ) : (
-              problem.problem
+              <span mix={css({ fontSize: t.fontSize.lg })}>{problem.problem}</span>
             )}
           </h2>
           <div
@@ -627,32 +702,112 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
             >
               Check
             </button>
+            <button
+              type="button"
+              mix={[
+                action,
+                resetAction,
+                on("click", () => {
+                  lines = [{ symbols: "", annotation: "", depth: 0, entered: false }];
+                  collapsed = new Set();
+                  hoverLine = null;
+                  notice = "";
+                  saveChange("unattempted");
+                }),
+              ]}
+            >
+              Reset
+            </button>
             {problemOnAssignment(problem.type, problem.number) ? (
-              <button
-                type="button"
-                mix={[
-                  action,
-                  on("click", () => {
-                    if (!result.complete) {
-                      notice = "Submit needs a finished derivation.";
-                      handle.update();
-                      return;
-                    }
-                    notice = submitted ? "Resubmitted." : "Submitted.";
-                    submitted = true;
-                    saveChange("correct", true);
-                  }),
-                ]}
-              >
-                {submitted ? "Resubmit" : "Submit"}
-              </button>
+              <div mix={css({ position: "relative" })}>
+                <button
+                  type="button"
+                  mix={[
+                    action,
+                    submitAction,
+                    on("click", () => {
+                      if (!result.complete) {
+                        notice = "Submit needs a finished derivation.";
+                        handle.update();
+                        return;
+                      }
+                      notice = submitted ? "Resubmitted." : "Submitted.";
+                      submitted = true;
+                      submission = JSON.stringify(
+                        lines.filter((line) => line.symbols.trim() !== "" || line.annotation.trim() !== ""),
+                      );
+                      saveChange("correct", true, submission);
+                    }),
+                  ]}
+                >
+                  {submitted ? "Resubmit" : "Submit"}
+                </button>
+                {submission ? (
+                  <button
+                    type="button"
+                    mix={[
+                      css({
+                        position: "absolute",
+                        top: "100%",
+                        right: "0px",
+                        display: "grid",
+                        margin: 0,
+                        padding: 0,
+                        border: "none",
+                        backgroundColor: "transparent",
+                        color: t.colors.text.secondary,
+                        font: "inherit",
+                        fontSize: t.fontSize.sm,
+                        lineHeight: t.lineHeight.normal,
+                        whiteSpace: "nowrap",
+                        cursor: "pointer",
+                        "&:hover": {
+                          backgroundColor: "#e4eef8",
+                          color: t.colors.text.primary,
+                        },
+                      }),
+                      on("click", () => {
+                        showSubmission = !showSubmission;
+                        handle.update();
+                      }),
+                    ]}
+                  >
+                    <span mix={css({ gridArea: "1 / 1", visibility: showSubmission ? "hidden" : "visible" })}>
+                      View Submission
+                    </span>
+                    <span mix={css({ gridArea: "1 / 1", visibility: showSubmission ? "visible" : "hidden" })}>
+                      Hide Submission
+                    </span>
+                  </button>
+                ) : null}
+              </div>
             ) : null}
           </div>
         </div>
-        {result.problemError ? (
-          <p mix={css({ color: t.colors.text.warning })}>{result.problemError}</p>
-        ) : null}
-        {renderTree()}
+        <div mix={css({ display: "grid" })}>
+          <div
+            mix={css({
+              gridArea: "1 / 1",
+              visibility: showSubmission ? "hidden" : "visible",
+            })}
+          >
+            {result.problemError ? (
+              <p mix={css({ color: t.colors.text.warning })}>{result.problemError}</p>
+            ) : null}
+            {renderTree()}
+          </div>
+          {parseWork(submission) ? (
+            <div
+              mix={css({
+                gridArea: "1 / 1",
+                visibility: showSubmission ? "visible" : "hidden",
+                alignSelf: "start",
+              })}
+            >
+              {renderSubmission()}
+            </div>
+          ) : null}
+        </div>
         {notice ? (
           <div
             mix={css({

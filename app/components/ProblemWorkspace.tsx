@@ -22,6 +22,12 @@ const action = css({
   "&:hover": { backgroundColor: "#c5d8f0" },
 });
 
+const submitAction = css({
+  backgroundColor: "#16a34a",
+  color: "#ffffff",
+  "&:hover": { backgroundColor: "#15803d" },
+});
+
 export interface ProblemWorkspaceProps {
   problem: Problem;
 }
@@ -134,6 +140,7 @@ export function ProblemWorkspace(handle: Handle<ProblemWorkspaceProps>) {
                 type="button"
                 mix={[
                   action,
+                  submitAction,
                   on("click", () => {
                     if (!work.trim()) {
                       notice = "Submit needs an answer.";

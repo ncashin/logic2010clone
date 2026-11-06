@@ -1,4 +1,4 @@
-import { Check, Search } from "lucide";
+import { Circle, CircleCheck, Search } from "lucide";
 import { css } from "pitlane/theme";
 import { type Handle, on } from "remix/component";
 
@@ -191,26 +191,25 @@ export function ProblemList(handle: Handle<ProblemListProps>) {
                     flexShrink: "0",
                   })}
                 >
-                  {record.submitted ? (
-                    <Icon
-                      icon={Check}
-                      mix={css({
-                        width: t.space.xl,
-                        height: t.space.xl,
-                        flexShrink: "0",
-                        color: stateColor.correct,
-                      })}
-                    />
-                  ) : null}
                   {problem.points != null ? (
                     <span
                       mix={css({
-                        color: record.status === "correct" ? stateColor.correct : t.colors.text.muted,
+                        color: t.colors.text.muted,
                       })}
                     >
-                      {problem.points}{problem.points === 1 ? "pt" : "pts"}
+                      {record.submitted ? problem.points : 0}/{problem.points}
+                      {problem.points === 1 ? "pt" : "pts"}
                     </span>
                   ) : null}
+                  <Icon
+                    icon={record.submitted ? CircleCheck : Circle}
+                    mix={css({
+                      width: t.fontSize.xl,
+                      height: t.fontSize.xl,
+                      flexShrink: "0",
+                      color: record.submitted ? stateColor.correct : t.colors.text.muted,
+                    })}
+                  />
                 </span>
               </a>
             </li>

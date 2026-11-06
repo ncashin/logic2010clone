@@ -31,7 +31,7 @@ let writes = new Map<string, Promise<void>>();
 export async function writeProgress(
   type: ProblemType,
   number: string,
-  patch: Partial<Pick<ProblemProgressEntry, "status" | "submitted" | "work">>,
+  patch: Partial<Pick<ProblemProgressEntry, "status" | "submitted" | "work" | "submission">>,
 ) {
   let id = problemId(type, number);
   let previous = writes.get(id) ?? Promise.resolve();
@@ -42,6 +42,7 @@ export async function writeProgress(
       status: current?.status ?? "unattempted",
       submitted: current?.submitted ?? false,
       work: current?.work,
+      ...(current?.submission == null ? {} : { submission: current.submission }),
       ...patch,
     });
     window.dispatchEvent(new Event(eventName));

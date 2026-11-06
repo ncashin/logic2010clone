@@ -146,6 +146,17 @@ export function parseArgument(problem: string): ParsedArgument | string {
   return { premises, conclusion };
 }
 
+/** Chapter 1 recognizing-rules answer: one step of MP, MT, or DN, otherwise none. */
+export function recognizeRule(problem: string): "mp" | "mt" | "dn" | "none" | string {
+  let parsed = parseArgument(problem);
+  if (typeof parsed === "string") return parsed;
+  let { premises, conclusion } = parsed;
+  if (premises.length === 2 && modusPonens(conclusion, premises)) return "mp";
+  if (premises.length === 2 && modusTollens(conclusion, premises)) return "mt";
+  if (premises.length === 1 && premises[0] && doubleNegation(conclusion, premises[0])) return "dn";
+  return "none";
+}
+
 export function parseFormula(input: string): Formula | string {
   let tokens = tokenize(input);
   if (typeof tokens === "string") return tokens;
@@ -377,34 +388,6 @@ function shownFormula(
   return null;
 }
 
-function shownText(
-  argument: { conclusion: string },
-  lines: DerivationLine[],
-  index: number,
-  rule: RuleName,
-  cites: number[],
-): string | null {
-  if (rule === "SHOW CONC") return `Show ${argument.conclusion}`;
-  if (rule === "SHOW CONS") {
-    let show = containingShow(lines, index);
-    let text = show === null ? "" : formulaText(lines[show]?.symbols ?? "");
-    let node = text ? parseNode(text) : null;
-    return node?.formula.kind === "if" && node.right ? `Show ${sliceOf(text, node.right)}` : null;
-  }
-  let cited = citedShowNode(lines, cites);
-  if (!cited) return null;
-  if (rule === "SHOW ANT" && cited.node.formula.kind === "if" && cited.node.left) {
-    return `Show ${sliceOf(cited.text, cited.node.left)}`;
-  }
-  if (rule === "SHOW NEGCONS" && cited.node.formula.kind === "if" && cited.node.right) {
-    return `Show ~${parenthesize(cited.text, cited.node.right)}`;
-  }
-  if (rule === "SHOW UNNEG" && cited.node.formula.kind === "not" && cited.node.of) {
-    return `Show ${sliceOf(cited.text, cited.node.of)}`;
-  }
-  return null;
-}
-
 function citedShowNode(lines: DerivationLine[], cites: number[]): { text: string; node: Node } | null {
   if (cites.length !== 1) return null;
   let text = formulaText(lines[(cites[0] ?? 0) - 1]?.symbols ?? "");
@@ -442,50 +425,20 @@ export function inferSymbols(problem: string, lines: DerivationLine[], index: nu
     let parsed = parseFormula(current);
     let target = parseFormula(formulaText(written));
     let same = typeof parsed !== "string" && typeof target !== "string" && sameFormula(parsed, target);
-    if (same && (/^\s*show\b/i.test(symbols) || !/^\s*show\b/i.test(written))) return null;
+    if (same && (/^\s*show\b/i.test(symbols) || !/^\s*show\b/i.test(written))) {
+      return symbols.trim() === written ? null : written;
+    }
   }
   return written;
 }
 
 function writtenFormula(problem: string, lines: DerivationLine[], index: number): string | null {
-  let text = argumentText(problem);
+  let formula = inferFormula(problem, lines, index);
+  if (!formula) return null;
+  let text = formatFormula(formula);
   let annotation = parseAnnotation(lines[index]?.annotation ?? "");
-  if (annotation.kind !== "rule" || !text) return null;
-  if (isShowRule(annotation.rule)) return shownText(text, lines, index, annotation.rule, annotation.cites);
-  if (BOX_RULES.has(annotation.rule)) return null;
-  switch (annotation.rule) {
-    case "PR":
-      return text.premises[(annotation.cites[0] ?? 0) - 1] ?? null;
-    case "ASS CD":
-    case "ASS ID": {
-      let show = formulaText(lines[index - 1]?.symbols ?? "");
-      let node = show ? parseNode(show) : null;
-      if (!node) return null;
-      if (annotation.rule === "ASS CD") return node.formula.kind === "if" && node.left ? sliceOf(show, node.left) : null;
-      return `~${parenthesize(show, node)}`;
-    }
-    case "R":
-    case "DN": {
-      if (annotation.cites.length !== 1) return null;
-      let source = citedText(lines, annotation.cites[0] ?? 0);
-      if (!source) return null;
-      if (annotation.rule === "R") return source;
-      let node = parseNode(source);
-      if (!node) return null;
-      if (node.formula.kind === "not" && node.of?.formula.kind === "not" && node.of.of) return sliceOf(source, node.of.of);
-      return `~~${parenthesize(source, node)}`;
-    }
-    case "MP":
-    case "MT": {
-      if (annotation.cites.length !== 2) return null;
-      let first = citedText(lines, annotation.cites[0] ?? 0);
-      let second = citedText(lines, annotation.cites[1] ?? 0);
-      if (!first || !second) return null;
-      return annotation.rule === "MP" ? modusPonensText(first, second) : modusTollensText(first, second);
-    }
-    default:
-      return null;
-  }
+  if (annotation.kind === "rule" && isShowRule(annotation.rule)) return `Show ${text}`;
+  return text;
 }
 
 function splitConclusion(problem: string): [string, string] | null {
@@ -510,47 +463,6 @@ function argumentText(problem: string): { premises: string[]; conclusion: string
 
 function formulaText(symbols: string): string {
   return symbols.trim().replace(/^show\b/i, "").trim();
-}
-
-function citedText(lines: DerivationLine[], number: number): string | null {
-  let text = formulaText(lines[number - 1]?.symbols ?? "");
-  return text === "" ? null : text;
-}
-
-function modusPonensText(first: string, second: string): string | null {
-  let left = parseNode(first);
-  let right = parseNode(second);
-  if (!left || !right) return null;
-  if (left.formula.kind === "if" && left.right && sameFormula(left.formula.if, right.formula)) return sliceOf(first, left.right);
-  if (right.formula.kind === "if" && right.right && sameFormula(right.formula.if, left.formula)) return sliceOf(second, right.right);
-  return null;
-}
-
-function modusTollensText(first: string, second: string): string | null {
-  let left = parseNode(first);
-  let right = parseNode(second);
-  if (!left || !right) return null;
-  let denied = tollensAntecedent(left, right);
-  if (denied) return `~${parenthesize(first, denied)}`;
-  denied = tollensAntecedent(right, left);
-  if (denied) return `~${parenthesize(second, denied)}`;
-  return null;
-}
-
-function tollensAntecedent(conditional: Node, denied: Node): Node | null {
-  if (conditional.formula.kind !== "if" || !conditional.left || !conditional.right) return null;
-  if (!sameFormula(denied.formula, negate(conditional.formula.then))) return null;
-  return conditional.left;
-}
-
-function parenthesize(input: string, node: Node): string {
-  let text = sliceOf(input, node);
-  if (node.formula.kind === "if" && !(input[node.start] === "(" && input[node.end - 1] === ")")) return `(${text})`;
-  return text;
-}
-
-function sliceOf(input: string, node: Node): string {
-  return input.slice(node.start, node.end).trim();
 }
 
 interface Node {

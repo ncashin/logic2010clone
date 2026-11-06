@@ -30,6 +30,7 @@ export let ProblemProgress = store({
         status: s.enum_(["unattempted", "in-progress", "incorrect", "correct"]),
         submitted: s.boolean(),
         work: s.optional(s.string()),
+        submission: s.optional(s.string()),
     }),
     getKey: record => record.id,
 });
