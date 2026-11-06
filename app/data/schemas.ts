@@ -22,3 +22,16 @@ export let CreateGuestBookEntry = f.object({
     name: f.field(s.string()),
     message: f.field(s.string()),
 });
+
+export let ProblemProgress = store({
+    name: "problem_progress",
+    schema: s.object({
+        id: s.string(),
+        status: s.enum_(["unattempted", "in-progress", "incorrect", "correct"]),
+        submitted: s.boolean(),
+        work: s.optional(s.string()),
+    }),
+    getKey: record => record.id,
+});
+
+export type ProblemProgressEntry = StoreRecord<typeof ProblemProgress>;

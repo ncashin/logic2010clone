@@ -2,89 +2,81 @@ import { css } from "pitlane/theme";
 import type { Handle } from "remix/component";
 
 import { sectionPadding } from "#app/components/Welcome.tsx";
+import { assignmentProblemList } from "#app/data/assignments.ts";
+import { problemId, problemLabel } from "#app/data/problems.ts";
+import { routes } from "#app/routes.ts";
 import { t } from "#app/theme.ts";
 
 export interface AssignmentProps {
   name: string;
+  slug: string;
 }
 
-const rows = [
-  { problem: "Pars 1.001", comment: "", points: "1", evaluation: "C", submitted: "Tue, 9/15/2026 1:33 PM" },
-  { problem: "Pars 1.002", comment: "", points: "1", evaluation: "C", submitted: "Tue, 9/15/2026 1:33 PM" },
-  { problem: "Symb 1.001", comment: "", points: "1", evaluation: "C", submitted: "Tue, 9/15/2026 1:45 PM" },
-];
-
-const cell = css({
-  paddingInline: t.space.md,
-  paddingBlock: t.space.sm,
-  textAlign: "left",
-  whiteSpace: "normal",
-  fontWeight: t.fontWeight.normal,
-  color: t.colors.text.primary,
-  borderBottomWidth: t.space.px,
-  borderBottomStyle: "solid",
-  borderBottomColor: t.colors.border.subtle,
-});
-
 export function Assignment(handle: Handle<AssignmentProps>) {
-  return () => (
-    <main
-      mix={[
-        css({
-          width: t.size.full,
-          flex: "1",
-          minHeight: t.size.full,
-          ...sectionPadding,
-          overflow: "auto",
-          fontFamily: t.fontFamily.sans,
-          color: t.colors.text.primary,
-        }),
-      ]}
-    >
-      <h2
-        mix={[
-          css({
-            margin: 0,
-            paddingBottom: t.space.md,
-            fontSize: t.fontSize.md,
-            fontWeight: t.fontWeight.normal,
-          }),
-        ]}
-      >
-        {handle.props.name}
-      </h2>
-      <table
+  return () => {
+    let items = assignmentProblemList(handle.props.slug);
+
+    return (
+      <main
         mix={[
           css({
             width: t.size.full,
-            tableLayout: "fixed",
-            borderCollapse: "collapse",
-            fontSize: t.fontSize.md,
-            lineHeight: t.lineHeight.normal,
+            flex: "1",
+            minHeight: t.size.full,
+            ...sectionPadding,
+            overflow: "auto",
+            fontFamily: t.fontFamily.sans,
+            color: t.colors.text.primary,
           }),
         ]}
       >
-        <thead>
-          <tr>
-            {["Problem Name", "Comment", "Points", "Evaluation", "Submission Date"].map((heading) => (
-              <th key={heading} mix={cell}>
-                {heading}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.problem}>
-              <td mix={cell}>{row.problem}</td>
-              <td mix={cell}>{row.comment}</td>
-              <td mix={cell}>{row.points}</td>
-              <td mix={cell}>{row.evaluation}</td>
-              <td mix={cell}>{row.submitted}</td>
-            </tr>
+        <h2
+          mix={[
+            css({
+              margin: 0,
+              paddingBottom: t.space.md,
+              fontSize: t.fontSize.md,
+              fontWeight: t.fontWeight.normal,
+            }),
+          ]}
+        >
+          {handle.props.name}
+        </h2>
+        <ul
+          mix={[
+            css({
+              margin: 0,
+              padding: 0,
+              listStyle: "none",
+              fontSize: t.fontSize.md,
+              lineHeight: t.lineHeight.normal,
+            }),
+          ]}
+        >
+          {items.map((item) => (
+            <li key={problemId(item.type, item.number)}>
+              <a
+                href={routes.module.problem.href({ name: item.type, problem: item.number })}
+                data-rmx-src={routes.module.problemContent.href({
+                  name: item.type,
+                  problem: item.number,
+                })}
+                data-rmx-target="module"
+                mix={css({
+                  display: "block",
+                  width: t.size.full,
+                  paddingBlock: t.space.sm,
+                  color: t.colors.choice.ink,
+                  textDecoration: "none",
+                  "&:hover": { backgroundColor: "#e4eef8" },
+                })}
+              >
+                {problemLabel(item, "typed")}
+              </a>
+            </li>
           ))}
-        </tbody>
-      </table>
-    </main>
-  );
+        </ul>
+      </main>
+    );
+  };
 }

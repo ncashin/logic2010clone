@@ -21,7 +21,8 @@ import type { GuestBookEntry } from "#app/data/schemas.ts";
 
 import { Icon } from "#app/components/Icon.tsx";
 import { ProblemList } from "#app/components/ProblemList.tsx";
-import { problems } from "#app/data/problems.ts";
+import { assignmentProblemList } from "#app/data/assignments.ts";
+import { problemId, problemsForType } from "#app/data/problems.ts";
 import { routes } from "#app/routes.ts";
 import { t } from "#app/theme.ts";
 
@@ -55,11 +56,20 @@ function assignmentSlug(name: string) {
   return name.toLowerCase().replaceAll(" ", "-");
 }
 
+function assignmentName(slug: string | undefined) {
+  return assignments.find((assignment) => assignmentSlug(assignment.name) === slug)?.name ?? "Assignment";
+}
+
+function firstProblem(type: string) {
+  return problemsForType(type)[0];
+}
+
 export interface SidebarProps {
   entries: GuestBookEntry[];
   module?: string;
   problem?: string;
   assignment?: string;
+  assignments?: boolean;
 }
 
 function moduleName(slug: string | undefined) {
@@ -68,12 +78,23 @@ function moduleName(slug: string | undefined) {
 
 export function Sidebar(handle: Handle<SidebarProps>) {
   let selectedModule = moduleName(handle.props.module);
-  let panel: "menu" | "problems" | "assignments" = handle.props.assignment
-    ? "assignments"
-    : handle.props.problem != null
+  let panel: "menu" | "problems" | "assignment" = handle.props.assignment
+    ? "assignment"
+    : handle.props.module
       ? "problems"
       : "menu";
-  let detail: "problems" | "assignments" = panel === "assignments" ? "assignments" : "problems";
+  let selectedAssignment = handle.props.assignment;
+  let selectedAssignmentItem = (() => {
+    let first = assignmentProblemList(handle.props.assignment)[0];
+    return first ? problemId(first.type, first.number) : "";
+  })();
+  let selectedProblem = handle.props.problem
+    ? problemId(moduleSlug(selectedModule), handle.props.problem)
+    : (() => {
+        let first = firstProblem(moduleSlug(selectedModule));
+        return first ? problemId(first.type, first.number) : "";
+      })();
+  let selectionNonce = 0;
 
   return () => {
 
@@ -116,8 +137,10 @@ export function Sidebar(handle: Handle<SidebarProps>) {
               }),
             ]}
           >
-            <button
-              type="button"
+            <a
+              href={routes.guestBook.index.href()}
+              data-rmx-src={routes.welcome.show.href()}
+              data-rmx-target="module"
               aria-label="Back"
               mix={[
                 on("click", () => {
@@ -149,7 +172,7 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                   strokeWidth: 2.5,
                 })}
               />
-            </button>
+            </a>
             <div mix={[css({ display: "grid", flex: "1" })]}>
               <h1
                 mix={[
@@ -186,12 +209,12 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                     margin: 0,
                     fontSize: t.fontSize.xl,
                     fontWeight: t.fontWeight.bold,
-                    opacity: panel === "assignments" ? 1 : 0,
+                    opacity: panel === "assignment" ? 1 : 0,
                     transition: "opacity 220ms ease",
                   }),
                 ]}
               >
-                Assignments
+                {assignmentName(selectedAssignment)}
               </h1>
             </div>
           </div>
@@ -237,12 +260,12 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                   paddingBlock: t.space.xs,
                   fontSize: t.fontSize.sm,
                   fontWeight: t.fontWeight.semibold,
-                  opacity: panel === "assignments" ? 1 : 0,
+                  opacity: panel === "assignment" ? 1 : 0,
                   transition: "opacity 220ms ease",
                 }),
               ]}
             >
-              Assignments
+              Problems
             </h2>
           </div>
           <div mix={[css({ position: "relative", flex: "1", minHeight: "0" })]}>
@@ -253,24 +276,45 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                   inset: 0,
                   display: "flex",
                   flexDirection: "column",
-                  overflow: "auto",
+                  overflow: "hidden",
                   opacity: panel === "menu" ? 1 : 0,
                   pointerEvents: panel === "menu" ? "auto" : "none",
                   transition: "opacity 220ms ease",
                 }),
               ]}
             >
-              {modules.map((module) => (
+              <div mix={css({ display: "flex", flexDirection: "column", flex: "1", minHeight: "0", overflow: "auto" })}>
+              {modules.map((module) => {
+                let slug = moduleSlug(module.name);
+                let first = firstProblem(slug);
+                return (
                 <a
                   key={module.name}
-                  href={moduleHREF(module.name)}
-                  data-rmx-src={routes.welcome.show.href()}
+                  href={
+                    first
+                      ? routes.module.problem.href({
+                          name: slug,
+                          problem: first.number,
+                        })
+                      : moduleHREF(module.name)
+                  }
+                  data-rmx-src={
+                    first
+                      ? routes.module.problemContent.href({
+                          name: slug,
+                          problem: first.number,
+                        })
+                      : routes.welcome.show.href()
+                  }
                   data-rmx-target="module"
                   mix={[
                     on("click", () => {
                       selectedModule = module.name;
                       panel = "problems";
-                      detail = "problems";
+                      if (first) {
+                        selectedProblem = problemId(first.type, first.number);
+                        selectionNonce += 1;
+                      }
                       handle.update();
                     }),
                     css({
@@ -302,7 +346,8 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                   />
                   {module.name}
                 </a>
-              ))}
+                );
+              })}
               <h2
                 mix={[
                   css({
@@ -317,46 +362,67 @@ export function Sidebar(handle: Handle<SidebarProps>) {
               >
                 Assignments
               </h2>
+              {assignments.map((assignment) => {
+                let slug = assignmentSlug(assignment.name);
+                let first = assignmentProblemList(slug)[0];
+                return (
+                  <a
+                    key={assignment.name}
+                    href={routes.assignment.show.href({ name: slug })}
+                    data-rmx-src={
+                      first
+                        ? routes.module.problemContent.href({
+                            name: first.type,
+                            problem: first.number,
+                          })
+                        : routes.welcome.show.href()
+                    }
+                    data-rmx-target="module"
+                    mix={[
+                      on("click", () => {
+                        selectedAssignment = slug;
+                        selectedAssignmentItem = first ? problemId(first.type, first.number) : "";
+                        selectionNonce += 1;
+                        panel = "assignment";
+                        handle.update();
+                      }),
+                      css({
+                        display: "flex",
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: t.space.sm,
+                        width: t.size.full,
+                        paddingInline: t.space.md,
+                        paddingBlock: t.space.xs,
+                        color: t.colors.choice.ink,
+                        backgroundColor: selectedAssignment === slug ? "#c5d8f0" : "transparent",
+                        cursor: "pointer",
+                        textDecoration: "none",
+                        "&:hover": {
+                          backgroundColor: selectedAssignment === slug ? "#c5d8f0" : "#e4eef8",
+                        },
+                      }),
+                    ]}
+                  >
+                    <Icon
+                      icon={assignment.icon}
+                      mix={css({ width: t.space.xl, height: t.space.xl })}
+                    />
+                    {assignment.name}
+                  </a>
+                );
+              })}
+              </div>
               <button
                 type="button"
                 mix={[
-                  on("click", () => {
-                    panel = "assignments";
-                    detail = "assignments";
-                    handle.update();
-                  }),
                   css({
                     display: "flex",
                     flexDirection: "row",
                     alignItems: "center",
                     gap: t.space.sm,
                     width: t.size.full,
-                    paddingInline: t.space.md,
-                    paddingBlock: t.space.xs,
-                    border: "none",
-                    font: "inherit",
-                    textAlign: "left",
-                    color: t.colors.choice.ink,
-                    backgroundColor: handle.props.assignment ? "#c5d8f0" : "transparent",
-                    cursor: "pointer",
-                    "&:hover": {
-                      backgroundColor: handle.props.assignment ? "#c5d8f0" : "#e4eef8",
-                    },
-                  }),
-                ]}
-              >
-                <Icon icon={Clipboard} mix={css({ width: t.space.xl, height: t.space.xl })} />
-                Assignments
-              </button>
-              <button
-                type="button"
-                mix={[
-                  css({
-                    display: "flex",
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: t.space.sm,
-                    width: t.size.full,
+                    marginTop: "auto",
                     paddingInline: t.space.md,
                     paddingBlock: t.space.xs,
                     border: "none",
@@ -381,14 +447,13 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                   display: "flex",
                   flexDirection: "column",
                   overflow: "hidden",
-                  opacity: panel === "menu" ? 0 : 1,
-                  pointerEvents: panel === "menu" ? "none" : "auto",
+                  opacity: panel !== "menu" ? 1 : 0,
+                  pointerEvents: panel !== "menu" ? "auto" : "none",
                   transition: "opacity 220ms ease",
                 }),
               ]}
             >
-              {detail === "problems" ? (
-                <div
+              <div
                   mix={[
                     css({
                       display: "flex",
@@ -403,78 +468,43 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                   ]}
                 >
                   <ProblemList
-                    module={moduleSlug(selectedModule)}
-                    problems={problems}
-                    selected={handle.props.problem}
+                    problems={
+                      panel === "assignment"
+                        ? assignmentProblemList(selectedAssignment)
+                        : problemsForType(moduleSlug(selectedModule))
+                    }
+                    selected={panel === "assignment" ? selectedAssignmentItem : selectedProblem}
+                    selectionNonce={selectionNonce}
+                    label={panel === "assignment" ? "typed" : "statement"}
+                    href={
+                      panel === "assignment"
+                        ? () => routes.assignment.show.href({ name: selectedAssignment ?? "" })
+                        : undefined
+                    }
                   />
                 </div>
-              ) : (
-                <div
-                  mix={[
-                    css({
-                      display: "flex",
-                      flexDirection: "column",
-                      overflow: "auto",
-                    }),
-                  ]}
-                >
-                  {assignments.map((assignment) => (
-                    <a
-                      key={assignment.name}
-                      href={routes.assignment.show.href({ name: assignmentSlug(assignment.name) })}
-                      data-rmx-src={routes.assignment.content.href({
-                        name: assignmentSlug(assignment.name),
-                      })}
-                      data-rmx-target="module"
-                      mix={[
-                        css({
-                          display: "flex",
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: t.space.sm,
-                          width: t.size.full,
-                          paddingInline: t.space.md,
-                          paddingBlock: t.space.xs,
-                          color: t.colors.choice.ink,
-                          backgroundColor:
-                            handle.props.assignment === assignmentSlug(assignment.name)
-                              ? "#c5d8f0"
-                              : "transparent",
-                          cursor: "pointer",
-                          "&:hover": {
-                            backgroundColor:
-                              handle.props.assignment === assignmentSlug(assignment.name)
-                                ? "#c5d8f0"
-                                : "#e4eef8",
-                          },
-                        }),
-                      ]}
-                    >
-                      <Icon
-                        icon={assignment.icon}
-                        mix={css({ width: t.space.xl, height: t.space.xl })}
-                      />
-                      {assignment.name}
-                    </a>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         </aside>
         <main mix={[css({ flex: "1", minWidth: "0", minHeight: t.size.screen })]}>
           <Frame
             name="module"
-            src={
-              handle.props.assignment
-                ? routes.assignment.content.href({ name: handle.props.assignment })
-                : handle.props.problem
-                  ? routes.module.problemContent.href({
-                      name: moduleSlug(selectedModule),
-                      problem: handle.props.problem,
-                    })
-                  : routes.welcome.show.href()
-            }
+            src={(() => {
+              let first = assignmentProblemList(handle.props.assignment)[0];
+              if (first) {
+                return routes.module.problemContent.href({
+                  name: first.type,
+                  problem: first.number,
+                });
+              }
+              if (handle.props.problem) {
+                return routes.module.problemContent.href({
+                  name: moduleSlug(selectedModule),
+                  problem: handle.props.problem,
+                });
+              }
+              return routes.welcome.show.href();
+            })()}
           />
         </main>
       </div>

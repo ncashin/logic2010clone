@@ -2,7 +2,8 @@ import { ChevronDown, ChevronRight, Ellipsis } from "lucide";
 import { css } from "pitlane/theme";
 import { type Handle, on } from "remix/component";
 
-import type { Problem } from "#app/components/ProblemList.tsx";
+import type { Problem } from "#app/data/problems.ts";
+import { getProgress, writeProgress } from "#app/data/progress.ts";
 import { Icon } from "#app/components/Icon.tsx";
 import {
   type DerivationLine,
@@ -50,6 +51,21 @@ export interface DerivationProblemProps {
   problem: Problem;
 }
 
+function hasWork(lines: DerivationLine[]) {
+  return lines.some((line) => line.symbols.trim() !== "" || line.annotation.trim() !== "");
+}
+
+function parseWork(work: string | undefined): DerivationLine[] | null {
+  if (!work) return null;
+  try {
+    let parsed = JSON.parse(work) as DerivationLine[];
+    if (!Array.isArray(parsed) || parsed.length === 0) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
   let loaded = "";
   let lines: DerivationLine[] = [];
@@ -57,15 +73,64 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
   let focusAnnotation: number | null = null;
   let collapsed = new Set<number>();
   let hoverLine: number | null = null;
+  let dirty = false;
+
+  handle.queueTask(() => {
+    void restore(handle.props.problem);
+  });
+  handle.signal.addEventListener("abort", () => {
+    if (dirty) void persist();
+  });
+
+  async function restore(problem: Problem) {
+    let saved = await getProgress(problem.type, problem.number);
+    if (
+      dirty ||
+      handle.props.problem.number !== problem.number ||
+      handle.props.problem.type !== problem.type
+    ) {
+      return;
+    }
+    let restored = parseWork(saved?.work);
+    loaded = `${problem.type}:${problem.number}`;
+    if (restored) lines = restored;
+    handle.update();
+  }
+
+  function persist(
+    status?: "unattempted" | "in-progress" | "incorrect" | "correct",
+    submitted?: boolean,
+  ) {
+    let { problem } = handle.props;
+    return writeProgress(problem.type, problem.number, {
+      status: status ?? (hasWork(lines) ? "in-progress" : "unattempted"),
+      work: JSON.stringify(lines),
+      ...(submitted == null ? {} : { submitted }),
+    });
+  }
+
+  function saveChange(
+    status?: "unattempted" | "in-progress" | "incorrect" | "correct",
+    submitted?: boolean,
+  ) {
+    dirty = true;
+    void handle.update().then((signal) => {
+      if (signal.aborted) return;
+      void persist(status, submitted);
+    });
+  }
 
   return () => {
     let { problem } = handle.props;
-    if (loaded !== problem.number) {
-      loaded = problem.number;
+    let key = `${problem.type}:${problem.number}`;
+    if (loaded !== key) {
+      loaded = key;
       lines = [{ symbols: "", annotation: "", depth: 0, entered: false }];
       notice = "";
       collapsed = new Set();
       hoverLine = null;
+      dirty = false;
+      void restore(problem);
     }
 
     function finished(checkedLines: ReturnType<typeof checkDerivation>["lines"], index: number) {
@@ -233,7 +298,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                     on("input", (event) => {
                       let typed = event.currentTarget.value;
                       line.symbols = crossed && showText ? `${showText[1]}${typed}` : typed;
-                      handle.update();
+                      saveChange();
                     }),
                   ]}
                   data-line={index}
@@ -259,7 +324,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
               on("input", (event) => {
                 line.annotation = event.currentTarget.value;
                 line.entered = false;
-                handle.update();
+                saveChange();
               }),
               on("keydown", (event) => {
                 if (event.key !== "Enter") return;
@@ -269,7 +334,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                 if (symbols) line.symbols = symbols;
                 let next = checkDerivation(problem.problem, lines);
                 if (finished(next.lines, index)) focusAnnotation = index + 1;
-                handle.update();
+                saveChange();
               }),
             ]}
             data-annotation={index}
@@ -438,8 +503,8 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
               mix={[
                 action,
                 on("click", () => {
-                  notice = result.complete ? "Checked: complete." : "";
-                  handle.update();
+                  notice = result.complete ? "Checked: complete." : "Checked: incomplete.";
+                  saveChange(result.complete ? "correct" : "incorrect");
                 }),
               ]}
             >
@@ -450,8 +515,13 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
               mix={[
                 action,
                 on("click", () => {
-                  notice = result.complete ? "Submitted." : "Submit needs a finished derivation.";
-                  handle.update();
+                  if (!result.complete) {
+                    notice = "Submit needs a finished derivation.";
+                    handle.update();
+                    return;
+                  }
+                  notice = "Submitted.";
+                  saveChange("correct", true);
                 }),
               ]}
             >

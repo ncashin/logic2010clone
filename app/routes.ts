@@ -11,6 +11,7 @@ export let routes = route({
         problemContent: get(`${import.meta.env.BASE_URL}modules/:name/:problem/content`),
     }),
     assignment: route({
+        index: get(`${import.meta.env.BASE_URL}assignments`),
         show: get(`${import.meta.env.BASE_URL}assignments/:name`),
         content: get(`${import.meta.env.BASE_URL}assignments/:name/content`),
     }),

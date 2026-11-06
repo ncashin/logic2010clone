@@ -1,42 +1,66 @@
-import { Search } from "lucide";
+import { Check, Search } from "lucide";
 import { css } from "pitlane/theme";
 import { type Handle, on } from "remix/component";
 
 import { Icon } from "#app/components/Icon.tsx";
-
+import {
+  type Problem,
+  type ProblemStatus,
+  problemId,
+  problemLabel,
+} from "#app/data/problems.ts";
+import { listProgress, progressFor, type ProgressMap, watchProgress } from "#app/data/progress.ts";
 import { routes } from "#app/routes.ts";
 import { t } from "#app/theme.ts";
 
-export type ProblemState = "solved" | "error" | "unsolved";
-
-export interface Problem {
-  number: string;
-  problem: string;
-  state: ProblemState;
-}
+export type { Problem, ProblemStatus };
 
 export interface ProblemListProps {
-  module: string;
   problems: Problem[];
   selected?: string;
+  selectionNonce?: number;
+  label?: "statement" | "typed";
+  href?: (problem: Problem) => string;
 }
 
-const stateColor: Record<ProblemState, string> = {
-  solved: "#008000",
-  error: "#cc0000",
-  unsolved: "#111827",
+const stateColor: Record<ProblemStatus, string> = {
+  correct: "#008000",
+  incorrect: "#cc0000",
+  "in-progress": "#ca8a04",
+  unattempted: "#111827",
 };
 
 export function ProblemList(handle: Handle<ProblemListProps>) {
-  let selected = handle.props.selected ?? handle.props.problems[0]?.number;
+  let selected = handle.props.selected;
+  let selectionNonce = handle.props.selectionNonce;
   let query = "";
+  let progress: ProgressMap = new Map();
+
+  handle.queueTask(() => {
+    void refresh();
+  });
+  watchProgress(() => {
+    void refresh();
+  }, handle.signal);
+
+  async function refresh() {
+    progress = await listProgress();
+    handle.update();
+  }
 
   return () => {
-    let { module, problems } = handle.props;
+    let { problems } = handle.props;
+    if (handle.props.selectionNonce !== selectionNonce) {
+      selectionNonce = handle.props.selectionNonce;
+      selected = handle.props.selected;
+    }
+    if (selected == null && problems[0]) selected = problemId(problems[0].type, problems[0].number);
     let needle = query.trim().toLowerCase();
     let visible = needle
       ? problems.filter((problem) =>
-          `${problem.number} ${problem.problem}`.toLowerCase().includes(needle),
+          `${problemLabel(problem, "typed")} ${problem.number} ${problem.problem}`
+            .toLowerCase()
+            .includes(needle),
         )
       : problems;
 
@@ -108,43 +132,62 @@ export function ProblemList(handle: Handle<ProblemListProps>) {
         ]}
       >
         {visible.map((problem) => {
-          let label =
-            problem.state === "error" ? `${problem.number}Err` : problem.number;
+          let key = problemId(problem.type, problem.number);
+          let record = progressFor(progress, problem);
+          let href =
+            handle.props.href?.(problem) ??
+            routes.module.problem.href({ name: problem.type, problem: problem.number });
 
           return (
-            <li key={`${problem.number}:${problem.state}`}>
+            <li key={key}>
               <a
-                href={routes.module.problem.href({ name: module, problem: problem.number })}
+                href={href}
                 data-rmx-src={routes.module.problemContent.href({
-                  name: module,
+                  name: problem.type,
                   problem: problem.number,
                 })}
                 data-rmx-target="module"
                 mix={[
                   on("click", () => {
-                    selected = problem.number;
+                    selected = key;
                     handle.update();
                   }),
                   css({
-                    display: "block",
+                    display: "flex",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: t.space.sm,
                     width: t.size.full,
                     paddingInline: t.space.md,
                     paddingBlock: t.space.xs,
                     border: "none",
                     textAlign: "left",
                     font: "inherit",
-                    color: stateColor[problem.state],
-                    backgroundColor:
-                      selected === problem.number ? "#c5d8f0" : "transparent",
+                    color: stateColor[record.status],
+                    backgroundColor: selected === key ? "#c5d8f0" : "transparent",
+                    textDecoration: "none",
                     cursor: "pointer",
                     "&:hover": {
-                      backgroundColor:
-                        selected === problem.number ? "#c5d8f0" : "#e4eef8",
+                      backgroundColor: selected === key ? "#c5d8f0" : "#e4eef8",
                     },
                   }),
                 ]}
               >
-                {label}: {problem.problem}
+                <span mix={css({ minWidth: "0" })}>
+                  {problemLabel(problem, handle.props.label ?? "statement")}
+                </span>
+                {record.submitted ? (
+                  <Icon
+                    icon={Check}
+                    mix={css({
+                      width: t.space.xl,
+                      height: t.space.xl,
+                      flexShrink: "0",
+                      color: stateColor.correct,
+                    })}
+                  />
+                ) : null}
               </a>
             </li>
           );

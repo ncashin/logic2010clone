@@ -16,12 +16,18 @@ const titles: Record<string, string> = {
 
 export default createController(routes.assignment, {
     actions: {
+        async index({ render, storage }) {
+            let entries = await storage.getMany(GuestBook);
+            return render(<Sidebar entries={entries} assignments />);
+        },
         async show({ params, render, storage }) {
             let entries = await storage.getMany(GuestBook);
             return render(<Sidebar entries={entries} assignment={params.name} />);
         },
         async content({ params, render }) {
-            return render(<Assignment name={titles[params.name] ?? params.name} />);
+            return render(
+                <Assignment name={titles[params.name] ?? params.name} slug={params.name} />,
+            );
         },
     },
 });
