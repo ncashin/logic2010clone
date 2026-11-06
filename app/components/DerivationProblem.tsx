@@ -8,8 +8,8 @@ import { getProgress, writeProgress } from "#app/data/progress.ts";
 import { Icon } from "#app/components/Icon.tsx";
 import {
   type DerivationLine,
-  annotationChoices,
   checkDerivation,
+  simpleAnnotations,
   formatFormula,
   inferSymbols,
   parseArgument,
@@ -64,6 +64,24 @@ function argumentParts(problem: string) {
   };
 }
 
+const ruleHelp: Record<string, string> = {
+  pr: "A premise from the problem.",
+  "ass cd": "Assume the if-part.",
+  "ass id": "Assume the opposite.",
+  r: "Copy an earlier line.",
+  mp: "From P and P→Q, get Q.",
+  mt: "From ~Q and P→Q, get ~P.",
+  dn: "Cancel two nots.",
+  cd: "Done when the then-part is shown.",
+  id: "Done when a line and its opposite both appear.",
+  dd: "Done when the shown line is copied.",
+  "show conc": "Start the conclusion.",
+  "show cons": "Start the then-part.",
+  "show ant": "Start the if-part.",
+  "show negcons": "Start the opposite of the then-part.",
+  "show unneg": "Start the formula under the not.",
+};
+
 function hasWork(lines: DerivationLine[]) {
   return lines.some((line) => line.symbols.trim() !== "" || line.annotation.trim() !== "");
 }
@@ -84,11 +102,10 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
   let lines: DerivationLine[] = [];
   let notice = "";
   let focusAnnotation: number | null = null;
-  let annotationMenu: number | null = null;
-  let annotationPick = 0;
   let collapsed = new Set<number>();
   let hoverLine: number | null = null;
   let dirty = false;
+  let helpOpen = false;
 
   handle.queueTask(() => {
     void restore(handle.props.problem);
@@ -326,163 +343,43 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
             );
           })()}
           </div>
-          {(() => {
-            let choices = annotationChoices(line.annotation);
-            let menuOpen = annotationMenu === index && choices.length > 0;
-            let picked = choices.length ? annotationPick % choices.length : 0;
-            let listId = `annotation-choices-${index}`;
-            return (
-              <div
-                data-line={index}
-                mix={[
-                  css({
-                    gridColumn: "3",
-                    gridRow: placed,
-                    position: "relative",
-                    minWidth: "0",
-                  }),
-                  ...watchLine(index),
-                ]}
-              >
-                <input
-                  mix={[
-                    lineField,
-                    css({
-                      width: t.size.full,
-                      paddingInline: t.space.sm,
-                      color: checked?.error ? t.colors.text.warning : t.colors.text.primary,
-                      "&:hover": { backgroundColor: t.surface.lvl1 },
-                    }),
-                    on("focus", () => {
-                      annotationMenu = index;
-                      annotationPick = 0;
-                      handle.update();
-                    }),
-                    on("blur", () => {
-                      if (annotationMenu === index) annotationMenu = null;
-                      handle.update();
-                    }),
-                    on("input", (event) => {
-                      line.annotation = event.currentTarget.value;
-                      line.entered = false;
-                      annotationMenu = index;
-                      annotationPick = 0;
-                      saveChange();
-                    }),
-                    on("keydown", (event) => {
-                      let nextChoices = annotationChoices(line.annotation);
-                      let open = annotationMenu === index && nextChoices.length > 0;
-                      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-                        event.preventDefault();
-                        if (!open) annotationMenu = index;
-                        else {
-                          let step = event.key === "ArrowDown" ? 1 : -1;
-                          annotationPick = (annotationPick + step + nextChoices.length) % nextChoices.length;
-                        }
-                        handle.update();
-                        return;
-                      }
-                      if (event.key === "Escape") {
-                        if (annotationMenu !== index) return;
-                        event.preventDefault();
-                        annotationMenu = null;
-                        handle.update();
-                        return;
-                      }
-                      if (event.key !== "Enter") return;
-                      event.preventDefault();
-                      let written = line.annotation.trim().replace(/\s+/g, " ").toUpperCase();
-                      let choice = open ? nextChoices[annotationPick % nextChoices.length] : undefined;
-                      if (choice && choice.value.toUpperCase() !== written) {
-                        line.annotation = choice.value;
-                        line.entered = false;
-                        annotationPick = 0;
-                        saveChange();
-                        return;
-                      }
-                      annotationMenu = null;
-                      line.entered = true;
-                      let symbols = inferSymbols(problem.problem, lines, index);
-                      if (symbols) line.symbols = symbols;
-                      let next = checkDerivation(problem.problem, lines);
-                      if (finished(next.lines, index)) focusAnnotation = index + 1;
-                      saveChange();
-                    }),
-                  ]}
-                  aria-activedescendant={menuOpen ? `${listId}-${picked}` : undefined}
-                  aria-autocomplete="list"
-                  aria-controls={listId}
-                  aria-expanded={menuOpen}
-                  data-annotation={index}
-                  data-line={index}
-                  placeholder="Annotation"
-                  role="combobox"
-                  title={checked?.error ?? ""}
-                  type="text"
-                  value={line.annotation}
-                />
-                {menuOpen ? (
-                  <ul
-                    id={listId}
-                    role="listbox"
-                    aria-label="Annotations"
-                    mix={css({
-                      position: "absolute",
-                      zIndex: "2",
-                      top: "100%",
-                      right: "0px",
-                      width: "max-content",
-                      margin: 0,
-                      padding: t.space.xs,
-                      listStyle: "none",
-                      backgroundColor: t.surface.lvl0,
-                      border: `${t.space.px} solid ${t.colors.border.default}`,
-                      boxShadow: t.shadow.sm,
-                    })}
-                  >
-                    {choices.map((choice, choiceIndex) => (
-                      <li
-                        key={choice.value}
-                        id={`${listId}-${choiceIndex}`}
-                        role="option"
-                        aria-selected={choiceIndex === picked}
-                        mix={[
-                          css({
-                            display: "flex",
-                            flexDirection: "row",
-                            alignItems: "baseline",
-                            justifyContent: "space-between",
-                            gap: t.space.md,
-                            paddingInline: t.space.sm,
-                            paddingBlock: t.space.xs,
-                            color: t.colors.text.primary,
-                            fontSize: t.fontSize.sm,
-                            lineHeight: t.lineHeight.tight,
-                            whiteSpace: "nowrap",
-                            backgroundColor: choiceIndex === picked ? t.surface.lvl2 : "transparent",
-                            cursor: "pointer",
-                          }),
-                          on("mousedown", (event) => {
-                            event.preventDefault();
-                            line.annotation = choice.value;
-                            line.entered = false;
-                            annotationMenu = index;
-                            annotationPick = choiceIndex;
-                            saveChange();
-                          }),
-                        ]}
-                      >
-                        <span mix={css({ flexShrink: "0" })}>{choice.name}</span>
-                        <span mix={css({ marginLeft: "auto", color: t.colors.text.muted, fontSize: t.fontSize.xs })}>
-                          {choice.example}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
-            );
-          })()}
+          <input
+            mix={[
+              lineField,
+              css({
+                gridColumn: "3",
+                gridRow: placed,
+                paddingInline: t.space.sm,
+                color: checked?.error ? t.colors.text.warning : t.colors.text.primary,
+                "&:hover": { backgroundColor: t.surface.lvl1 },
+                "&:focus": { backgroundColor: t.surface.lvl1 },
+              }),
+              ...watchLine(index),
+              on("input", (event) => {
+                line.annotation = event.currentTarget.value;
+                line.entered = false;
+                let symbols = inferSymbols(problem.problem, lines, index);
+                if (symbols !== null) line.symbols = symbols;
+                saveChange();
+              }),
+              on("keydown", (event) => {
+                if (event.key !== "Enter") return;
+                event.preventDefault();
+                line.entered = true;
+                let symbols = inferSymbols(problem.problem, lines, index);
+                if (symbols !== null) line.symbols = symbols;
+                let next = checkDerivation(problem.problem, lines);
+                if (finished(next.lines, index)) focusAnnotation = index + 1;
+                saveChange();
+              }),
+            ]}
+            data-annotation={index}
+            data-line={index}
+            placeholder="Annotation"
+            title={checked?.error ?? ""}
+            type="text"
+            value={line.annotation}
+          />
         </div>
       );
     }
@@ -652,7 +549,15 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
               problem.problem
             )}
           </h2>
-          <div mix={css({ display: "flex", flexShrink: "0", flexDirection: "row", gap: t.space.sm })}>
+          <div
+            mix={css({
+              position: "relative",
+              display: "flex",
+              flexShrink: "0",
+              flexDirection: "row",
+              gap: t.space.sm,
+            })}
+          >
             <button
               type="button"
               mix={[
@@ -683,6 +588,55 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
               >
                 Submit
               </button>
+            ) : null}
+            <button
+              type="button"
+              mix={[
+                action,
+                on("click", () => {
+                  helpOpen = !helpOpen;
+                  handle.update();
+                }),
+              ]}
+            >
+              Help
+            </button>
+            {helpOpen ? (
+              <div
+                mix={css({
+                  position: "absolute",
+                  top: "100%",
+                  right: "0px",
+                  zIndex: "2",
+                  width: "28rem",
+                  maxHeight: "70vh",
+                  overflow: "auto",
+                  marginTop: t.space.sm,
+                  padding: t.space.lg,
+                  backgroundColor: t.surface.lvl0,
+                  boxShadow: t.shadow.md,
+                  fontSize: t.fontSize.sm,
+                  lineHeight: t.lineHeight.normal,
+                })}
+              >
+                {simpleAnnotations.map((rule) => (
+                  <div
+                    key={rule.name}
+                    mix={css({
+                      display: "grid",
+                      gridTemplateColumns: "7.5rem 1fr",
+                      gap: t.space.sm,
+                      paddingBlock: t.space.xs,
+                    })}
+                  >
+                    <div>
+                      <div mix={css({ color: t.colors.text.secondary })}>{rule.name}</div>
+                      <div mix={css({ color: t.colors.text.muted })}>{rule.symbols}</div>
+                    </div>
+                    <div>{ruleHelp[rule.name]}</div>
+                  </div>
+                ))}
+              </div>
             ) : null}
           </div>
         </div>

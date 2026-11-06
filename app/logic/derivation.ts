@@ -55,27 +55,27 @@ export interface AnnotationChoice {
   /** Text written into the annotation field. */
   value: string;
   name: string;
-  /** Sample annotation and the formulas it uses. */
-  example: string;
+  /** Sample formulas for this rule. */
+  symbols: string;
 }
 
 /** Annotations accepted in chapter 1, before any derived or quantifier rules. */
-const SIMPLE_ANNOTATIONS: AnnotationChoice[] = [
-  { value: "pr", name: "pr", example: "pr1 P" },
-  { value: "ass cd", name: "ass cd", example: "ass cd P" },
-  { value: "ass id", name: "ass id", example: "ass id ~P" },
-  { value: "r", name: "r", example: "2 r P" },
-  { value: "mp", name: "mp", example: "2 3 mp P P→Q ∴ Q" },
-  { value: "mt", name: "mt", example: "2 3 mt ~Q P→Q ∴ ~P" },
-  { value: "dn", name: "dn", example: "2 dn ~~P ∴ P" },
-  { value: "cd", name: "cd", example: "2 cd P→Q" },
-  { value: "id", name: "id", example: "2 id P" },
-  { value: "dd", name: "dd", example: "2 5 dd P" },
-  { value: "show conc", name: "show conc", example: "show conc Q" },
-  { value: "show cons", name: "show cons", example: "show cons P→Q ∴ Q" },
-  { value: "show ant", name: "show ant", example: "show ant 2 P→Q ∴ P" },
-  { value: "show negcons", name: "show negcons", example: "show negcons 2 P→Q ∴ ~Q" },
-  { value: "show unneg", name: "show unneg", example: "show unneg 2 ~P ∴ P" },
+export const simpleAnnotations: AnnotationChoice[] = [
+  { value: "pr", name: "pr", symbols: "P" },
+  { value: "ass cd", name: "ass cd", symbols: "P→Q ∴ P" },
+  { value: "ass id", name: "ass id", symbols: "P ∴ ~P" },
+  { value: "r", name: "r", symbols: "P ∴ P" },
+  { value: "mp", name: "mp", symbols: "P P→Q ∴ Q" },
+  { value: "mt", name: "mt", symbols: "~Q P→Q ∴ ~P" },
+  { value: "dn", name: "dn", symbols: "~~P ∴ P" },
+  { value: "cd", name: "cd", symbols: "P→Q ∴ Q" },
+  { value: "id", name: "id", symbols: "Q ~Q" },
+  { value: "dd", name: "dd", symbols: "P ∴ P" },
+  { value: "show conc", name: "show conc", symbols: "∴ Q" },
+  { value: "show cons", name: "show cons", symbols: "P→Q ∴ Q" },
+  { value: "show ant", name: "show ant", symbols: "P→Q ∴ P" },
+  { value: "show negcons", name: "show negcons", symbols: "P→Q ∴ ~Q" },
+  { value: "show unneg", name: "show unneg", symbols: "~P ∴ P" },
 ];
 
 const CITED_ANNOTATIONS = new Set(["r", "mp", "mt", "dn", "cd", "id", "dd"]);
@@ -98,13 +98,13 @@ function withCites(choice: AnnotationChoice, cites: string): AnnotationChoice {
  */
 export function annotationChoices(input: string): AnnotationChoice[] {
   let text = input.trim().replace(/\s+/g, " ").toUpperCase();
-  if (text === "") return SIMPLE_ANNOTATIONS;
+  if (text === "") return simpleAnnotations;
 
   let cited = /^(\d+(?:\s*,\s*\d+)*)\s*(.*)$/.exec(text);
   if (cited?.[1]) {
     let cites = cited[1].replace(/\s*,\s*/g, ", ");
     let rest = cited[2] ?? "";
-    return SIMPLE_ANNOTATIONS.filter(
+    return simpleAnnotations.filter(
       (choice) =>
         CITED_ANNOTATIONS.has(choice.name) &&
         (rest === "" || annotationPrefix(choice.name, rest) || (rest === "N" && choice.name === "dn")),
@@ -113,7 +113,7 @@ export function annotationChoices(input: string): AnnotationChoice[] {
 
   if (/^PR\s*\d*$/.test(text)) {
     let digits = text.replace(/^PR\s*/, "");
-    let premise = SIMPLE_ANNOTATIONS[0];
+    let premise = simpleAnnotations[0];
     if (!premise) return [];
     return [{ ...premise, value: digits ? `pr${digits}` : "pr" }];
   }
@@ -121,12 +121,12 @@ export function annotationChoices(input: string): AnnotationChoice[] {
   let showCite = /^(.*\D)\s+(\d+)$/.exec(text);
   if (showCite?.[1] && showCite[2]) {
     let command = showCite[1].trim();
-    return SIMPLE_ANNOTATIONS.filter(
+    return simpleAnnotations.filter(
       (choice) => SHOW_CITE.has(choice.name) && annotationPrefix(choice.name, command),
     ).map((choice) => ({ ...choice, value: `${choice.name} ${showCite[2]}` }));
   }
 
-  return SIMPLE_ANNOTATIONS.filter(
+  return simpleAnnotations.filter(
     (choice) => annotationPrefix(choice.name, text) || (text === "N" && choice.name === "dn"),
   );
 }
@@ -261,16 +261,16 @@ export function checkDerivation(problem: string, lines: DerivationLine[]): Check
         line.error = "Unknown annotation. Use PR1, ASS CD, ASS ID, R, MP, MT, DN, CD, ID, DD, or a show command.";
         continue;
       }
+      if (isShowRule(annotation.rule)) {
+        let expected = shownFormula(parsed, lines, index, annotation.rule, annotation.cites);
+        if (!expected) line.error = showUnavailable(annotation.rule, annotation.cites);
+        else if (line.formula && !sameFormula(line.formula, expected)) {
+          line.error = `Show ${formatFormula(expected)}.`;
+        } else line.show = true;
+        continue;
+      }
       if (line.show) {
-        if (isShowRule(annotation.rule)) {
-          let expected = shownFormula(parsed, lines, index, annotation.rule, annotation.cites);
-          if (!expected) line.error = showUnavailable(annotation.rule, annotation.cites);
-          else if (line.formula && !sameFormula(line.formula, expected)) {
-            line.error = `Show ${formatFormula(expected)}.`;
-          }
-        } else if (!BOX_RULES.has(annotation.rule)) {
-          line.error = "Close a show line with a cited DD, CD, or ID.";
-        }
+        if (!BOX_RULES.has(annotation.rule)) line.error = "Close a show line with a cited DD, CD, or ID.";
         continue;
       }
       if (BOX_RULES.has(annotation.rule)) continue;
@@ -367,7 +367,7 @@ function shownFormula(
   if (rule === "SHOW CONS") {
     let show = containingShow(lines, index);
     let formula = show === null ? null : parseFormula(formulaText(lines[show]?.symbols ?? ""));
-    return typeof formula === "object" && formula.kind === "if" ? formula.then : null;
+    return formula && typeof formula === "object" && formula.kind === "if" ? formula.then : null;
   }
   let cited = citedShowNode(lines, cites);
   if (!cited) return null;
@@ -432,13 +432,17 @@ function isCloser(line: DerivationLine): boolean {
 }
 
 export function inferSymbols(problem: string, lines: DerivationLine[], index: number): string | null {
+  let annotation = parseAnnotation(lines[index]?.annotation ?? "");
   let written = writtenFormula(problem, lines, index);
+  if (annotation.kind === "rule" && isShowRule(annotation.rule)) return written ?? "";
   if (!written) return null;
-  let current = formulaText(lines[index]?.symbols ?? "");
+  let symbols = lines[index]?.symbols ?? "";
+  let current = formulaText(symbols);
   if (current) {
     let parsed = parseFormula(current);
     let target = parseFormula(formulaText(written));
-    if (typeof parsed !== "string" && typeof target !== "string" && sameFormula(parsed, target)) return null;
+    let same = typeof parsed !== "string" && typeof target !== "string" && sameFormula(parsed, target);
+    if (same && (/^\s*show\b/i.test(symbols) || !/^\s*show\b/i.test(written))) return null;
   }
   return written;
 }
@@ -993,7 +997,7 @@ function readLine(line: DerivationLine): CheckedLine {
 }
 
 function parseShow(text: string): ParsedAnnotation | null {
-  let match = /^(?:S|SH|SHO|SHOW)(?:\s*(.*))?$/.exec(text);
+  let match = /^(?:SHOW|SHO|SH|S)(?:\s*(.*))?$/.exec(text);
   if (!match) return null;
   let rest = (match[1] ?? "").trim();
   let options = [
