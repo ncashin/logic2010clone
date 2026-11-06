@@ -26,6 +26,29 @@ export interface ProblemListProps {
   content?: (problem: Problem) => string;
 }
 
+function sectionId(number: string) {
+  let [chapter, rest = ""] = number.split(".");
+  let digits = /^\d+/.exec(rest)?.[0] ?? "";
+  if (digits.length <= 2) return `${chapter}.${digits}`;
+  return `${chapter}.${digits.slice(0, -1)}`;
+}
+
+function sectionLabel(problems: Problem[]) {
+  let stems = [
+    ...new Set(
+      problems.map((problem) => {
+        let [chapter, rest = ""] = problem.number.split(".");
+        let digits = /^\d+/.exec(rest)?.[0] ?? "";
+        return `${chapter}.${digits}`;
+      }),
+    ),
+  ].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  let first = stems[0];
+  let last = stems[stems.length - 1];
+  if (first == null || last == null || first === last) return first ?? "";
+  return `${first}–${last}`;
+}
+
 const stateColor: Record<ProblemStatus, string> = {
   correct: "#008000",
   incorrect: "#cc0000",
@@ -66,12 +89,22 @@ export function ProblemList(handle: Handle<ProblemListProps>) {
             .includes(needle),
         )
       : problems;
-    let chapters: { chapter: string; problems: Problem[] }[] = [];
+    let chapters: { chapter: string; sections: { id: string; label: string; problems: Problem[] }[] }[] =
+      [];
     for (let problem of visible) {
       let chapter = problem.number.split(".")[0] ?? problem.number;
+      let id = sectionId(problem.number);
       let group = chapters.find((item) => item.chapter === chapter);
-      if (group) group.problems.push(problem);
-      else chapters.push({ chapter, problems: [problem] });
+      if (!group) {
+        group = { chapter, sections: [] };
+        chapters.push(group);
+      }
+      let section = group.sections.find((item) => item.id === id);
+      if (section) section.problems.push(problem);
+      else group.sections.push({ id, label: "", problems: [problem] });
+    }
+    for (let group of chapters) {
+      for (let section of group.sections) section.label = sectionLabel(section.problems);
     }
 
     return (
@@ -145,19 +178,40 @@ export function ProblemList(handle: Handle<ProblemListProps>) {
               mix={css({
                 position: "sticky",
                 top: "0",
-                zIndex: "1",
+                zIndex: "2",
                 margin: 0,
                 paddingInline: t.space.md,
                 paddingBlock: t.space.xs,
-                backgroundColor: t.surface.lvl2,
-                color: t.colors.text.primary,
-                fontSize: t.fontSize.sm,
-                fontWeight: t.fontWeight.semibold,
+                backgroundColor: t.surface.lvl0,
+                color: t.colors.text.muted,
+                fontSize: t.fontSize.xs,
+                fontWeight: t.fontWeight.medium,
+                letterSpacing: t.letterSpacing.wide,
                 lineHeight: t.lineHeight.normal,
+                borderBottomWidth: t.space.px,
+                borderBottomStyle: "solid",
+                borderBottomColor: t.colors.border.subtle,
               })}
             >
               Chapter {group.chapter}
             </h2>
+            )}
+            {group.sections.map((section) => (
+            <div key={section.id}>
+            {handle.props.chapters === false ? null : (
+            <h3
+              mix={css({
+                margin: 0,
+                paddingInline: t.space.md,
+                paddingBlock: t.space.xs,
+                color: t.colors.text.muted,
+                fontSize: t.fontSize.xxs,
+                fontWeight: t.fontWeight.normal,
+                lineHeight: t.lineHeight.normal,
+              })}
+            >
+              {section.label}
+            </h3>
             )}
             <ul
               mix={css({
@@ -166,7 +220,7 @@ export function ProblemList(handle: Handle<ProblemListProps>) {
                 listStyle: "none",
               })}
             >
-              {group.problems.map((problem) => {
+              {section.problems.map((problem) => {
                 let key = problemId(problem.type, problem.number);
                 let record = progressFor(progress, problem);
                 let onAssignment = problemOnAssignment(problem.type, problem.number);
@@ -254,6 +308,8 @@ export function ProblemList(handle: Handle<ProblemListProps>) {
                 );
               })}
             </ul>
+            </div>
+            ))}
           </section>
         ))}
       </div>
