@@ -106,6 +106,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
   let hoverLine: number | null = null;
   let dirty = false;
   let helpOpen = false;
+  let submitted = false;
 
   handle.queueTask(() => {
     void restore(handle.props.problem);
@@ -126,6 +127,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
     let restored = parseWork(saved?.work);
     loaded = `${problem.type}:${problem.number}`;
     if (restored) lines = restored;
+    submitted = saved?.submitted ?? false;
     handle.update();
   }
 
@@ -162,6 +164,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
       collapsed = new Set();
       hoverLine = null;
       dirty = false;
+      submitted = false;
       void restore(problem);
     }
 
@@ -358,8 +361,6 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
               on("input", (event) => {
                 line.annotation = event.currentTarget.value;
                 line.entered = false;
-                let symbols = inferSymbols(problem.problem, lines, index);
-                if (symbols !== null) line.symbols = symbols;
                 saveChange();
               }),
               on("keydown", (event) => {
@@ -558,6 +559,62 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
               gap: t.space.sm,
             })}
           >
+            <div
+              mix={css({
+                position: "relative",
+                display: "flex",
+              })}
+            >
+              <button
+                type="button"
+                mix={[
+                  action,
+                  on("click", () => {
+                    helpOpen = !helpOpen;
+                    handle.update();
+                  }),
+                ]}
+              >
+                Help
+              </button>
+              {helpOpen ? (
+                <div
+                  mix={css({
+                    position: "absolute",
+                    top: "100%",
+                    right: "0px",
+                    zIndex: "2",
+                    width: "28rem",
+                    maxHeight: "70vh",
+                    overflow: "auto",
+                    marginTop: t.space.sm,
+                    padding: t.space.lg,
+                    backgroundColor: t.surface.lvl0,
+                    boxShadow: t.shadow.md,
+                    fontSize: t.fontSize.sm,
+                    lineHeight: t.lineHeight.normal,
+                  })}
+                >
+                  {simpleAnnotations.map((rule) => (
+                    <div
+                      key={rule.name}
+                      mix={css({
+                        display: "grid",
+                        gridTemplateColumns: "7.5rem 1fr",
+                        gap: t.space.sm,
+                        paddingBlock: t.space.xs,
+                      })}
+                    >
+                      <div>
+                        <div mix={css({ color: t.colors.text.secondary })}>{rule.name}</div>
+                        <div mix={css({ color: t.colors.text.muted })}>{rule.symbols}</div>
+                      </div>
+                      <div>{ruleHelp[rule.name]}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
             <button
               type="button"
               mix={[
@@ -581,62 +638,14 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                       handle.update();
                       return;
                     }
-                    notice = "Submitted.";
+                    notice = submitted ? "Resubmitted." : "Submitted.";
+                    submitted = true;
                     saveChange("correct", true);
                   }),
                 ]}
               >
-                Submit
+                {submitted ? "Resubmit" : "Submit"}
               </button>
-            ) : null}
-            <button
-              type="button"
-              mix={[
-                action,
-                on("click", () => {
-                  helpOpen = !helpOpen;
-                  handle.update();
-                }),
-              ]}
-            >
-              Help
-            </button>
-            {helpOpen ? (
-              <div
-                mix={css({
-                  position: "absolute",
-                  top: "100%",
-                  right: "0px",
-                  zIndex: "2",
-                  width: "28rem",
-                  maxHeight: "70vh",
-                  overflow: "auto",
-                  marginTop: t.space.sm,
-                  padding: t.space.lg,
-                  backgroundColor: t.surface.lvl0,
-                  boxShadow: t.shadow.md,
-                  fontSize: t.fontSize.sm,
-                  lineHeight: t.lineHeight.normal,
-                })}
-              >
-                {simpleAnnotations.map((rule) => (
-                  <div
-                    key={rule.name}
-                    mix={css({
-                      display: "grid",
-                      gridTemplateColumns: "7.5rem 1fr",
-                      gap: t.space.sm,
-                      paddingBlock: t.space.xs,
-                    })}
-                  >
-                    <div>
-                      <div mix={css({ color: t.colors.text.secondary })}>{rule.name}</div>
-                      <div mix={css({ color: t.colors.text.muted })}>{rule.symbols}</div>
-                    </div>
-                    <div>{ruleHelp[rule.name]}</div>
-                  </div>
-                ))}
-              </div>
             ) : null}
           </div>
         </div>

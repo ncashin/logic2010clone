@@ -31,6 +31,7 @@ export function ProblemWorkspace(handle: Handle<ProblemWorkspaceProps>) {
   let work = "";
   let notice = "";
   let dirty = false;
+  let submitted = false;
 
   handle.queueTask(() => {
     void restore(handle.props.problem);
@@ -50,6 +51,7 @@ export function ProblemWorkspace(handle: Handle<ProblemWorkspaceProps>) {
     }
     loaded = `${problem.type}:${problem.number}`;
     work = saved?.work ?? "";
+    submitted = saved?.submitted ?? false;
     handle.update();
   }
 
@@ -82,6 +84,7 @@ export function ProblemWorkspace(handle: Handle<ProblemWorkspaceProps>) {
       work = "";
       notice = "";
       dirty = false;
+      submitted = false;
       void restore(problem);
     }
 
@@ -137,12 +140,13 @@ export function ProblemWorkspace(handle: Handle<ProblemWorkspaceProps>) {
                       handle.update();
                       return;
                     }
-                    notice = "Submitted.";
+                    notice = submitted ? "Resubmitted." : "Submitted.";
+                    submitted = true;
                     saveChange("correct", true);
                   }),
                 ]}
               >
-                Submit
+                {submitted ? "Resubmit" : "Submit"}
               </button>
             ) : null}
           </div>

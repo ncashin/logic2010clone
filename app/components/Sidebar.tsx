@@ -4,6 +4,7 @@ import {
   Braces,
   CircleHelp,
   Clipboard,
+  ExternalLink,
   FileText,
   GitBranch,
   Library,
@@ -330,13 +331,17 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                       paddingBlock: t.space.xs,
                       color: t.colors.choice.ink,
                       backgroundColor:
-                        !handle.props.assignment && selectedModule === module.name
+                        handle.props.module &&
+                        !handle.props.assignment &&
+                        selectedModule === module.name
                           ? "#c5d8f0"
                           : "transparent",
                       cursor: "pointer",
                       "&:hover": {
                         backgroundColor:
-                          !handle.props.assignment && selectedModule === module.name
+                          handle.props.module &&
+                          !handle.props.assignment &&
+                          selectedModule === module.name
                             ? "#c5d8f0"
                             : "#e4eef8",
                       },
@@ -434,7 +439,20 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                   </a>
                 );
               })}
-              </div>
+              <h2
+                mix={[
+                  css({
+                    margin: 0,
+                    marginTop: t.space.lg,
+                    paddingInline: t.space.md,
+                    paddingBlock: t.space.xs,
+                    fontSize: t.fontSize.sm,
+                    fontWeight: t.fontWeight.semibold,
+                  }),
+                ]}
+              >
+                Resources
+              </h2>
               <button
                 type="button"
                 mix={[
@@ -444,7 +462,6 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                     alignItems: "center",
                     gap: t.space.sm,
                     width: t.size.full,
-                    marginTop: "auto",
                     paddingInline: t.space.md,
                     paddingBlock: t.space.xs,
                     border: "none",
@@ -460,6 +477,31 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                 <Icon icon={CircleHelp} mix={css({ width: t.space.xl, height: t.space.xl })} />
                 Help
               </button>
+              <a
+                href="https://online.mun.ca/d2l/home/677996"
+                target="_blank"
+                rel="noreferrer"
+                mix={[
+                  css({
+                    display: "flex",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: t.space.sm,
+                    width: t.size.full,
+                    paddingInline: t.space.md,
+                    paddingBlock: t.space.xs,
+                    color: t.colors.choice.ink,
+                    backgroundColor: "transparent",
+                    textDecoration: "none",
+                    cursor: "pointer",
+                    "&:hover": { backgroundColor: "#e4eef8" },
+                  }),
+                ]}
+              >
+                <Icon icon={ExternalLink} mix={css({ width: t.space.xl, height: t.space.xl })} />
+                Course Website
+              </a>
+            </div>
             </div>
             <div
               mix={[
