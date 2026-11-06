@@ -21,6 +21,7 @@ export interface ProblemListProps {
   selectionNonce?: number;
   label?: "statement" | "typed";
   href?: (problem: Problem) => string;
+  content?: (problem: Problem) => string;
 }
 
 const stateColor: Record<ProblemStatus, string> = {
@@ -142,10 +143,13 @@ export function ProblemList(handle: Handle<ProblemListProps>) {
             <li key={key}>
               <a
                 href={href}
-                data-rmx-src={routes.module.problemContent.href({
-                  name: problem.type,
-                  problem: problem.number,
-                })}
+                data-rmx-src={
+                  handle.props.content?.(problem) ??
+                  routes.module.problemContent.href({
+                    name: problem.type,
+                    problem: problem.number,
+                  })
+                }
                 data-rmx-target="module"
                 mix={[
                   on("click", () => {
@@ -177,17 +181,37 @@ export function ProblemList(handle: Handle<ProblemListProps>) {
                 <span mix={css({ minWidth: "0" })}>
                   {problemLabel(problem, handle.props.label ?? "statement")}
                 </span>
-                {record.submitted ? (
-                  <Icon
-                    icon={Check}
-                    mix={css({
-                      width: t.space.xl,
-                      height: t.space.xl,
-                      flexShrink: "0",
-                      color: stateColor.correct,
-                    })}
-                  />
-                ) : null}
+                <span
+                  mix={css({
+                    display: "flex",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: t.space.sm,
+                    marginLeft: "auto",
+                    flexShrink: "0",
+                  })}
+                >
+                  {record.submitted ? (
+                    <Icon
+                      icon={Check}
+                      mix={css({
+                        width: t.space.xl,
+                        height: t.space.xl,
+                        flexShrink: "0",
+                        color: stateColor.correct,
+                      })}
+                    />
+                  ) : null}
+                  {problem.points != null ? (
+                    <span
+                      mix={css({
+                        color: record.status === "correct" ? stateColor.correct : t.colors.text.muted,
+                      })}
+                    >
+                      {problem.points}{problem.points === 1 ? "pt" : "pts"}
+                    </span>
+                  ) : null}
+                </span>
               </a>
             </li>
           );

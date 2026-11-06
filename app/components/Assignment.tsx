@@ -56,9 +56,14 @@ export function Assignment(handle: Handle<AssignmentProps>) {
           {items.map((item) => (
             <li key={problemId(item.type, item.number)}>
               <a
-                href={routes.module.problem.href({ name: item.type, problem: item.number })}
-                data-rmx-src={routes.module.problemContent.href({
-                  name: item.type,
+                href={routes.assignment.problem.href({
+                  name: handle.props.slug,
+                  type: item.type,
+                  problem: item.number,
+                })}
+                data-rmx-src={routes.assignment.problemContent.href({
+                  name: handle.props.slug,
+                  type: item.type,
                   problem: item.number,
                 })}
                 data-rmx-target="module"

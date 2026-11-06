@@ -2,13 +2,16 @@ import { ChevronDown, ChevronRight, Ellipsis } from "lucide";
 import { css } from "pitlane/theme";
 import { type Handle, on } from "remix/component";
 
+import { problemOnAssignment } from "#app/data/assignments.ts";
 import type { Problem } from "#app/data/problems.ts";
 import { getProgress, writeProgress } from "#app/data/progress.ts";
 import { Icon } from "#app/components/Icon.tsx";
 import {
   type DerivationLine,
   checkDerivation,
+  formatFormula,
   inferSymbols,
+  parseArgument,
 } from "#app/logic/derivation.ts";
 import { sectionPadding } from "#app/components/Welcome.tsx";
 import { t } from "#app/theme.ts";
@@ -49,6 +52,15 @@ const lineField = css({
 
 export interface DerivationProblemProps {
   problem: Problem;
+}
+
+function argumentParts(problem: string) {
+  let parsed = parseArgument(problem);
+  if (typeof parsed === "string") return null;
+  return {
+    premises: parsed.premises.map((formula) => formatFormula(formula)),
+    conclusion: formatFormula(parsed.conclusion),
+  };
 }
 
 function hasWork(lines: DerivationLine[]) {
@@ -142,6 +154,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
     }
 
     let result = checkDerivation(problem.problem, lines);
+    let parts = argumentParts(problem.problem);
     let last = lines.at(-1);
     let lastIndex = lines.length - 1;
     if (
@@ -495,7 +508,23 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
               }),
             ]}
           >
-            Derivation {problem.number}: {problem.problem}
+            Derivation {problem.number}:{" "}
+            {parts ? (
+              <span
+                mix={css({
+                  display: "inline-flex",
+                  alignItems: "baseline",
+                  gap: "1.1em",
+                })}
+              >
+                {parts.premises.map((premise) => (
+                  <span>{premise}.</span>
+                ))}
+                <span>∴ {parts.conclusion}</span>
+              </span>
+            ) : (
+              problem.problem
+            )}
           </h2>
           <div mix={css({ display: "flex", flexShrink: "0", flexDirection: "row", gap: t.space.sm })}>
             <button
@@ -510,23 +539,25 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
             >
               Check
             </button>
-            <button
-              type="button"
-              mix={[
-                action,
-                on("click", () => {
-                  if (!result.complete) {
-                    notice = "Submit needs a finished derivation.";
-                    handle.update();
-                    return;
-                  }
-                  notice = "Submitted.";
-                  saveChange("correct", true);
-                }),
-              ]}
-            >
-              Submit
-            </button>
+            {problemOnAssignment(problem.type, problem.number) ? (
+              <button
+                type="button"
+                mix={[
+                  action,
+                  on("click", () => {
+                    if (!result.complete) {
+                      notice = "Submit needs a finished derivation.";
+                      handle.update();
+                      return;
+                    }
+                    notice = "Submitted.";
+                    saveChange("correct", true);
+                  }),
+                ]}
+              >
+                Submit
+              </button>
+            ) : null}
           </div>
         </div>
         {result.problemError ? (

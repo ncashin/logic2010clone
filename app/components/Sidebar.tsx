@@ -36,12 +36,12 @@ const modules = [
 ] as const;
 
 const assignments = [
-  { name: "Assignment 1", icon: Clipboard },
-  { name: "Assignment 2", icon: Notebook },
-  { name: "Assignment 3", icon: NotebookPen },
-  { name: "Assignment 4", icon: FileText },
-  { name: "Assignment 5", icon: ScrollText },
-  { name: "Assignment 6", icon: Library },
+  { name: "Assignment 1", icon: Clipboard, due: "Due Monday October 26th 2026" },
+  { name: "Assignment 2", icon: Notebook, due: "Due Tuesday October 27th 2026" },
+  { name: "Assignment 3", icon: NotebookPen, due: "Due Wednesday October 28th 2026" },
+  { name: "Assignment 4", icon: FileText, due: "Due Thursday October 29th 2026" },
+  { name: "Assignment 5", icon: ScrollText, due: "Due Friday October 30th 2026" },
+  { name: "Assignment 6", icon: Library, due: "Due Friday November 6th 2026" },
 ] as const;
 
 function moduleSlug(name: string) {
@@ -85,6 +85,9 @@ export function Sidebar(handle: Handle<SidebarProps>) {
       : "menu";
   let selectedAssignment = handle.props.assignment;
   let selectedAssignmentItem = (() => {
+    if (handle.props.assignment && handle.props.module && handle.props.problem) {
+      return problemId(handle.props.module, handle.props.problem);
+    }
     let first = assignmentProblemList(handle.props.assignment)[0];
     return first ? problemId(first.type, first.number) : "";
   })();
@@ -368,11 +371,20 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                 return (
                   <a
                     key={assignment.name}
-                    href={routes.assignment.show.href({ name: slug })}
+                    href={
+                      first
+                        ? routes.assignment.problem.href({
+                            name: slug,
+                            type: first.type,
+                            problem: first.number,
+                          })
+                        : routes.assignment.show.href({ name: slug })
+                    }
                     data-rmx-src={
                       first
-                        ? routes.module.problemContent.href({
-                            name: first.type,
+                        ? routes.assignment.problemContent.href({
+                            name: slug,
+                            type: first.type,
                             problem: first.number,
                           })
                         : routes.welcome.show.href()
@@ -406,9 +418,19 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                   >
                     <Icon
                       icon={assignment.icon}
-                      mix={css({ width: t.space.xl, height: t.space.xl })}
+                      mix={css({ width: t.space.xl, height: t.space.xl, flexShrink: "0" })}
                     />
-                    {assignment.name}
+                    <span mix={css({ minWidth: "0" })}>{assignment.name}</span>
+                    <span
+                      mix={css({
+                        marginLeft: "auto",
+                        flexShrink: "0",
+                        fontSize: t.fontSize.sm,
+                        color: t.colors.text.muted,
+                      })}
+                    >
+                      {assignment.due}
+                    </span>
                   </a>
                 );
               })}
@@ -447,42 +469,59 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                   display: "flex",
                   flexDirection: "column",
                   overflow: "hidden",
-                  opacity: panel !== "menu" ? 1 : 0,
-                  pointerEvents: panel !== "menu" ? "auto" : "none",
+                  opacity: panel === "problems" ? 1 : 0,
+                  pointerEvents: panel === "problems" ? "auto" : "none",
                   transition: "opacity 220ms ease",
+                  fontFamily: t.fontFamily.mono,
+                  fontSize: t.fontSize.sm,
+                  lineHeight: t.lineHeight.normal,
                 }),
               ]}
             >
-              <div
-                  mix={[
-                    css({
-                      display: "flex",
-                      flexDirection: "column",
-                      height: t.size.full,
-                      minHeight: "0",
-                      overflow: "hidden",
-                      fontFamily: t.fontFamily.mono,
-                      fontSize: t.fontSize.sm,
-                      lineHeight: t.lineHeight.normal,
-                    }),
-                  ]}
-                >
-                  <ProblemList
-                    problems={
-                      panel === "assignment"
-                        ? assignmentProblemList(selectedAssignment)
-                        : problemsForType(moduleSlug(selectedModule))
-                    }
-                    selected={panel === "assignment" ? selectedAssignmentItem : selectedProblem}
-                    selectionNonce={selectionNonce}
-                    label={panel === "assignment" ? "typed" : "statement"}
-                    href={
-                      panel === "assignment"
-                        ? () => routes.assignment.show.href({ name: selectedAssignment ?? "" })
-                        : undefined
-                    }
-                  />
-                </div>
+              <ProblemList
+                problems={problemsForType(moduleSlug(selectedModule))}
+                selected={selectedProblem}
+                selectionNonce={selectionNonce}
+                label="statement"
+              />
+            </div>
+            <div
+              mix={[
+                css({
+                  position: "absolute",
+                  inset: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  overflow: "hidden",
+                  opacity: panel === "assignment" ? 1 : 0,
+                  pointerEvents: panel === "assignment" ? "auto" : "none",
+                  transition: "opacity 220ms ease",
+                  fontFamily: t.fontFamily.mono,
+                  fontSize: t.fontSize.sm,
+                  lineHeight: t.lineHeight.normal,
+                }),
+              ]}
+            >
+              <ProblemList
+                problems={assignmentProblemList(selectedAssignment)}
+                selected={selectedAssignmentItem}
+                selectionNonce={selectionNonce}
+                label="typed"
+                href={(problem) =>
+                  routes.assignment.problem.href({
+                    name: selectedAssignment ?? "",
+                    type: problem.type,
+                    problem: problem.number,
+                  })
+                }
+                content={(problem) =>
+                  routes.assignment.problemContent.href({
+                    name: selectedAssignment ?? "",
+                    type: problem.type,
+                    problem: problem.number,
+                  })
+                }
+              />
             </div>
           </div>
         </aside>
@@ -490,10 +529,18 @@ export function Sidebar(handle: Handle<SidebarProps>) {
           <Frame
             name="module"
             src={(() => {
+              if (handle.props.assignment && handle.props.module && handle.props.problem) {
+                return routes.assignment.problemContent.href({
+                  name: handle.props.assignment,
+                  type: handle.props.module,
+                  problem: handle.props.problem,
+                });
+              }
               let first = assignmentProblemList(handle.props.assignment)[0];
-              if (first) {
-                return routes.module.problemContent.href({
-                  name: first.type,
+              if (first && handle.props.assignment) {
+                return routes.assignment.problemContent.href({
+                  name: handle.props.assignment,
+                  type: first.type,
                   problem: first.number,
                 });
               }

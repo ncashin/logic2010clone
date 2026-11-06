@@ -47,12 +47,12 @@ export interface CheckedLine {
 const BOX_RULES = new Set(["CD", "ID", "DD"]);
 
 export function parseArgument(problem: string): ParsedArgument | string {
-  let parts = problem.split("∴");
-  if (parts.length !== 2) return "Problem needs a single ∴ before the conclusion.";
-  let conclusion = parseFormula(parts[1] ?? "");
+  let parts = splitConclusion(problem);
+  if (!parts) return "Problem needs a single ∴ before the conclusion.";
+  let conclusion = parseFormula(parts[1]);
   if (typeof conclusion === "string") return conclusion;
   let premises: Formula[] = [];
-  for (let piece of splitPremises(parts[0] ?? "")) {
+  for (let piece of splitPremises(parts[0])) {
     if (piece.trim() === "") continue;
     let formula = parseFormula(piece);
     if (typeof formula === "string") return formula;
@@ -310,12 +310,20 @@ function writtenFormula(problem: string, lines: DerivationLine[], index: number)
   }
 }
 
+function splitConclusion(problem: string): [string, string] | null {
+  for (let mark of ["∴", ".:"] as const) {
+    let parts = problem.split(mark);
+    if (parts.length === 2) return [parts[0] ?? "", parts[1] ?? ""];
+  }
+  return null;
+}
+
 function argumentText(problem: string): { premises: string[]; conclusion: string } | null {
-  let parts = problem.split("∴");
-  if (parts.length !== 2) return null;
-  let conclusion = (parts[1] ?? "").trim();
+  let parts = splitConclusion(problem);
+  if (!parts) return null;
+  let conclusion = parts[1].trim();
   if (conclusion === "" || typeof parseFormula(conclusion) === "string") return null;
-  let premises = splitPremises(parts[0] ?? "")
+  let premises = splitPremises(parts[0])
     .map((piece) => piece.trim())
     .filter((piece) => piece !== "");
   if (premises.some((piece) => typeof parseFormula(piece) === "string")) return null;

@@ -1,6 +1,7 @@
 import { css } from "pitlane/theme";
 import { type Handle, on } from "remix/component";
 
+import { problemOnAssignment } from "#app/data/assignments.ts";
 import type { Problem } from "#app/data/problems.ts";
 import { getProgress, writeProgress } from "#app/data/progress.ts";
 import { problemTypeName } from "#app/data/problems.ts";
@@ -125,23 +126,25 @@ export function ProblemWorkspace(handle: Handle<ProblemWorkspaceProps>) {
             >
               Check
             </button>
-            <button
-              type="button"
-              mix={[
-                action,
-                on("click", () => {
-                  if (!work.trim()) {
-                    notice = "Submit needs an answer.";
-                    handle.update();
-                    return;
-                  }
-                  notice = "Submitted.";
-                  saveChange("correct", true);
-                }),
-              ]}
-            >
-              Submit
-            </button>
+            {problemOnAssignment(problem.type, problem.number) ? (
+              <button
+                type="button"
+                mix={[
+                  action,
+                  on("click", () => {
+                    if (!work.trim()) {
+                      notice = "Submit needs an answer.";
+                      handle.update();
+                      return;
+                    }
+                    notice = "Submitted.";
+                    saveChange("correct", true);
+                  }),
+                ]}
+              >
+                Submit
+              </button>
+            ) : null}
           </div>
         </div>
         <textarea
