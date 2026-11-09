@@ -323,6 +323,15 @@ export function checkDerivation(problem: string, lines: DerivationLine[]): Check
     if (stable) break;
   }
 
+  for (let index = 0; index < lines.length - 1; index += 1) {
+    let source = lines[index];
+    let line = checked[index];
+    if (!source || !line || line.error) continue;
+    if (source.symbols.trim() === "" && source.annotation.trim() === "") {
+      line.error = "Remove this unused line.";
+    }
+  }
+
   let complete = checked.some(
     (line, index) =>
       line.show &&
@@ -934,6 +943,13 @@ type ParsedAnnotation =
   | { kind: "partial" }
   | { kind: "invalid" }
   | { kind: "rule"; rule: RuleName; cites: number[] };
+
+/** Line numbers cited by a finished annotation. Premise numbers are omitted. */
+export function annotationCites(input: string): number[] {
+  let parsed = parseAnnotation(input);
+  if (parsed.kind !== "rule" || parsed.rule === "PR") return [];
+  return parsed.cites;
+}
 
 function parseAnnotation(input: string): ParsedAnnotation {
   let text = input.trim().replace(/^["']+|["']+$/g, "").replace(/\s+/g, " ").toUpperCase();

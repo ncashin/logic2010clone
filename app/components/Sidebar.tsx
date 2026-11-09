@@ -248,7 +248,6 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                     fontSize: t.fontSize.xl,
                     fontWeight: t.fontWeight.bold,
                     opacity: panel === "menu" ? 1 : 0,
-                    transition: "opacity 220ms ease",
                   }),
                 ]}
               >
@@ -262,7 +261,6 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                     fontSize: t.fontSize.xl,
                     fontWeight: t.fontWeight.bold,
                     opacity: panel === "problems" ? 1 : 0,
-                    transition: "opacity 220ms ease",
                   }),
                 ]}
               >
@@ -276,7 +274,6 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                     fontSize: t.fontSize.xl,
                     fontWeight: t.fontWeight.bold,
                     opacity: panel === "assignment" ? 1 : 0,
-                    transition: "opacity 220ms ease",
                   }),
                 ]}
               >
@@ -295,7 +292,6 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                   fontSize: t.fontSize.sm,
                   fontWeight: t.fontWeight.semibold,
                   opacity: panel === "menu" ? 1 : 0,
-                  transition: "opacity 220ms ease",
                 }),
               ]}
             >
@@ -311,7 +307,6 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                   fontSize: t.fontSize.sm,
                   fontWeight: t.fontWeight.semibold,
                   opacity: panel === "problems" ? 1 : 0,
-                  transition: "opacity 220ms ease",
                 }),
               ]}
             >
@@ -328,7 +323,6 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                   fontWeight: t.fontWeight.semibold,
                   opacity: panel === "assignment" ? 1 : 0,
                   pointerEvents: "none",
-                  transition: "opacity 220ms ease",
                 }),
               ]}
             >
@@ -359,7 +353,7 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                 : "Problems"}
             </h2>
           </div>
-          <div mix={[css({ position: "relative", flex: "1", minHeight: "0" })]}>
+          <div mix={[css({ position: "relative", flex: "1", minHeight: "0", overflow: "hidden" })]}>
             <div
               mix={[
                 css({
@@ -370,7 +364,6 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                   overflow: "hidden",
                   opacity: panel === "menu" ? 1 : 0,
                   pointerEvents: panel === "menu" ? "auto" : "none",
-                  transition: "opacity 220ms ease",
                 }),
               ]}
             >
@@ -521,11 +514,12 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                         alignItems: "center",
                         gap: t.space.sm,
                         marginLeft: "auto",
-                        flexShrink: "0",
+                        textAlign: "right",
                         color: t.colors.text.muted,
+                        fontSize: t.fontSize.xs,
                       })}
                     >
-                      {score.earned}/{score.total} pts
+                      {assignment.due}
                       <Icon
                         icon={score.done ? CircleCheck : Circle}
                         mix={css({
@@ -613,7 +607,6 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                   overflow: "hidden",
                   opacity: panel === "problems" ? 1 : 0,
                   pointerEvents: panel === "problems" ? "auto" : "none",
-                  transition: "opacity 220ms ease",
                   fontSize: t.fontSize.sm,
                   lineHeight: t.lineHeight.normal,
                 }),
@@ -636,7 +629,6 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                   overflow: "hidden",
                   opacity: panel === "assignment" ? 1 : 0,
                   pointerEvents: panel === "assignment" ? "auto" : "none",
-                  transition: "opacity 220ms ease",
                   fontSize: t.fontSize.sm,
                   lineHeight: t.lineHeight.normal,
                 }),

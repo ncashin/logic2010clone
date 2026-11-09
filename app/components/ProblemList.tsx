@@ -26,6 +26,18 @@ export interface ProblemListProps {
   content?: (problem: Problem) => string;
 }
 
+function sortByTypeThenNumber(problems: Problem[]) {
+  let typeOrder: string[] = [];
+  for (let problem of problems) {
+    if (!typeOrder.includes(problem.type)) typeOrder.push(problem.type);
+  }
+  return [...problems].sort((a, b) => {
+    let type = typeOrder.indexOf(a.type) - typeOrder.indexOf(b.type);
+    if (type !== 0) return type;
+    return a.number.localeCompare(b.number, undefined, { numeric: true });
+  });
+}
+
 function sectionId(number: string) {
   let [chapter, rest = ""] = number.split(".");
   let digits = /^\d+/.exec(rest)?.[0] ?? "";
@@ -121,21 +133,26 @@ export function ProblemList(handle: Handle<ProblemListProps>) {
             .includes(needle),
         )
       : problems;
+    if (handle.props.chapters === false) visible = sortByTypeThenNumber(visible);
     let chapters: {
       chapter: string;
       sections: { id: string; label: string; blurb: string; problems: Problem[] }[];
     }[] = [];
-    for (let problem of visible) {
-      let chapter = problem.number.split(".")[0] ?? problem.number;
-      let id = sectionId(problem.number);
-      let group = chapters.find((item) => item.chapter === chapter);
-      if (!group) {
-        group = { chapter, sections: [] };
-        chapters.push(group);
+    if (handle.props.chapters === false) {
+      chapters = [{ chapter: "", sections: [{ id: "all", label: "", blurb: "", problems: visible }] }];
+    } else {
+      for (let problem of visible) {
+        let chapter = problem.number.split(".")[0] ?? problem.number;
+        let id = sectionId(problem.number);
+        let group = chapters.find((item) => item.chapter === chapter);
+        if (!group) {
+          group = { chapter, sections: [] };
+          chapters.push(group);
+        }
+        let section = group.sections.find((item) => item.id === id);
+        if (section) section.problems.push(problem);
+        else group.sections.push({ id, label: "", blurb: "", problems: [problem] });
       }
-      let section = group.sections.find((item) => item.id === id);
-      if (section) section.problems.push(problem);
-      else group.sections.push({ id, label: "", blurb: "", problems: [problem] });
     }
     for (let group of chapters) {
       let merged: typeof group.sections = [];

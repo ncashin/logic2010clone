@@ -3,36 +3,35 @@ import { type Handle, on } from "remix/component";
 
 import { problemOnAssignment } from "#app/data/assignments.ts";
 import { problemStatement, type Problem } from "#app/data/problems.ts";
-import { getProgress, writeProgress } from "#app/data/progress.ts";
+import { getProgress, peekProgress, writeProgress } from "#app/data/progress.ts";
 import { sectionPadding } from "#app/components/Welcome.tsx";
 import { formatFormula, parseArgument, recognizeRule } from "#app/logic/derivation.ts";
 import { t } from "#app/theme.ts";
 
-const action = css({
-  paddingInline: t.space.md,
-  paddingBlock: t.space.xs,
-  border: "none",
-  borderRadius: t.radius.none,
-  backgroundColor: "#e4eef8",
-  color: t.colors.text.primary,
-  font: "inherit",
-  fontSize: t.fontSize.sm,
-  lineHeight: t.lineHeight.normal,
-  cursor: "pointer",
-  "&:hover": { backgroundColor: "#c5d8f0" },
-});
+function actionStyle(tone: "default" | "reset" | "submit") {
+  return css({
+    paddingInline: t.space.md,
+    paddingBlock: t.space.xs,
+    border: "none",
+    borderRadius: t.radius.none,
+    backgroundColor:
+      tone === "reset" ? t.colors.action.danger.background : tone === "submit" ? "#16a34a" : "#e4eef8",
+    color:
+      tone === "reset" ? t.colors.action.danger.foreground : tone === "submit" ? "#ffffff" : t.colors.text.primary,
+    font: "inherit",
+    fontSize: t.fontSize.sm,
+    lineHeight: t.lineHeight.normal,
+    cursor: "pointer",
+    "&:hover": {
+      backgroundColor:
+        tone === "reset" ? t.colors.action.danger.backgroundHover : tone === "submit" ? "#15803d" : "#c5d8f0",
+    },
+  });
+}
 
-const resetAction = css({
-  backgroundColor: t.colors.action.danger.background,
-  color: t.colors.action.danger.foreground,
-  "&:hover": { backgroundColor: t.colors.action.danger.backgroundHover },
-});
-
-const submitAction = css({
-  backgroundColor: "#16a34a",
-  color: "#ffffff",
-  "&:hover": { backgroundColor: "#15803d" },
-});
+const action = actionStyle("default");
+const resetAction = actionStyle("reset");
+const submitAction = actionStyle("submit");
 
 const rules = [
   { name: "mp", symbols: "P  P→Q  ∴  Q", help: "From P and P→Q, get Q." },
@@ -93,9 +92,12 @@ export function RecognizingRules(handle: Handle<RecognizingRulesProps>) {
     ) {
       return;
     }
+    let nextAnswer = saved?.work ?? "";
+    let nextSubmitted = saved?.submitted ?? false;
     loaded = `${problem.type}:${problem.number}`;
-    answer = saved?.work ?? "";
-    submitted = saved?.submitted ?? false;
+    if (answer === nextAnswer && submitted === nextSubmitted) return;
+    answer = nextAnswer;
+    submitted = nextSubmitted;
     handle.update();
   }
 
@@ -126,12 +128,13 @@ export function RecognizingRules(handle: Handle<RecognizingRulesProps>) {
     let { problem } = handle.props;
     let key = `${problem.type}:${problem.number}`;
     if (loaded !== key) {
+      let saved = peekProgress(problem.type, problem.number);
       loaded = key;
-      answer = "";
+      answer = saved?.work ?? "";
       notice = "";
       dirty = false;
       helpOpen = false;
-      submitted = false;
+      submitted = saved?.submitted ?? false;
       void restore(problem);
     }
 
@@ -243,6 +246,9 @@ export function RecognizingRules(handle: Handle<RecognizingRulesProps>) {
                 </div>
               ) : null}
             </div>
+            <button type="button" mix={[action]}>
+              Feedback
+            </button>
             <button
               type="button"
               mix={[
@@ -263,7 +269,6 @@ export function RecognizingRules(handle: Handle<RecognizingRulesProps>) {
             <button
               type="button"
               mix={[
-                action,
                 resetAction,
                 on("click", () => {
                   answer = "";
@@ -279,7 +284,6 @@ export function RecognizingRules(handle: Handle<RecognizingRulesProps>) {
               <button
                 type="button"
                 mix={[
-                  action,
                   submitAction,
                   on("click", () => {
                     if (!correct) {

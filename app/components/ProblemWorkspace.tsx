@@ -3,30 +3,29 @@ import { type Handle, on } from "remix/component";
 
 import { problemOnAssignment } from "#app/data/assignments.ts";
 import type { Problem } from "#app/data/problems.ts";
-import { getProgress, writeProgress } from "#app/data/progress.ts";
+import { getProgress, peekProgress, writeProgress } from "#app/data/progress.ts";
 import { problemStatement, problemTypeName } from "#app/data/problems.ts";
 import { sectionPadding } from "#app/components/Welcome.tsx";
 import { t } from "#app/theme.ts";
 
-const action = css({
-  paddingInline: t.space.md,
-  paddingBlock: t.space.xs,
-  border: "none",
-  borderRadius: t.radius.none,
-  backgroundColor: "#e4eef8",
-  color: t.colors.text.primary,
-  font: "inherit",
-  fontSize: t.fontSize.sm,
-  lineHeight: t.lineHeight.normal,
-  cursor: "pointer",
-  "&:hover": { backgroundColor: "#c5d8f0" },
-});
+function actionStyle(tone: "default" | "submit") {
+  return css({
+    paddingInline: t.space.md,
+    paddingBlock: t.space.xs,
+    border: "none",
+    borderRadius: t.radius.none,
+    backgroundColor: tone === "submit" ? "#16a34a" : "#e4eef8",
+    color: tone === "submit" ? "#ffffff" : t.colors.text.primary,
+    font: "inherit",
+    fontSize: t.fontSize.sm,
+    lineHeight: t.lineHeight.normal,
+    cursor: "pointer",
+    "&:hover": { backgroundColor: tone === "submit" ? "#15803d" : "#c5d8f0" },
+  });
+}
 
-const submitAction = css({
-  backgroundColor: "#16a34a",
-  color: "#ffffff",
-  "&:hover": { backgroundColor: "#15803d" },
-});
+const action = actionStyle("default");
+const submitAction = actionStyle("submit");
 
 export interface ProblemWorkspaceProps {
   problem: Problem;
@@ -55,9 +54,12 @@ export function ProblemWorkspace(handle: Handle<ProblemWorkspaceProps>) {
     ) {
       return;
     }
+    let nextWork = saved?.work ?? "";
+    let nextSubmitted = saved?.submitted ?? false;
     loaded = `${problem.type}:${problem.number}`;
-    work = saved?.work ?? "";
-    submitted = saved?.submitted ?? false;
+    if (work === nextWork && submitted === nextSubmitted) return;
+    work = nextWork;
+    submitted = nextSubmitted;
     handle.update();
   }
 
@@ -86,11 +88,12 @@ export function ProblemWorkspace(handle: Handle<ProblemWorkspaceProps>) {
     let { problem } = handle.props;
     let key = `${problem.type}:${problem.number}`;
     if (loaded !== key) {
+      let saved = peekProgress(problem.type, problem.number);
       loaded = key;
-      work = "";
+      work = saved?.work ?? "";
       notice = "";
       dirty = false;
-      submitted = false;
+      submitted = saved?.submitted ?? false;
       void restore(problem);
     }
 
@@ -111,17 +114,28 @@ export function ProblemWorkspace(handle: Handle<ProblemWorkspaceProps>) {
             paddingBottom: t.space.md,
           })}
         >
-          <h2
-            mix={css({
-              margin: 0,
-              flex: "1",
-              minWidth: "0",
-              fontSize: t.fontSize.md,
-              fontWeight: t.fontWeight.normal,
-            })}
-          >
-            {problemTypeName(problem.type)} {problem.number}: {problemStatement(problem)}
-          </h2>
+          <div mix={css({ flex: "1", minWidth: "0" })}>
+            <h2
+              mix={css({
+                margin: 0,
+                fontSize: t.fontSize.md,
+                fontWeight: t.fontWeight.normal,
+              })}
+            >
+              {problemTypeName(problem.type)} {problem.number}
+            </h2>
+            <p
+              mix={css({
+                margin: 0,
+                marginTop: t.space.xs,
+                color: t.colors.text.primary,
+                fontSize: t.fontSize.lg,
+                lineHeight: t.lineHeight.normal,
+              })}
+            >
+              {problemStatement(problem)}
+            </p>
+          </div>
           <div mix={css({ display: "flex", flexShrink: "0", flexDirection: "row", gap: t.space.sm })}>
             <button
               type="button"
@@ -139,7 +153,6 @@ export function ProblemWorkspace(handle: Handle<ProblemWorkspaceProps>) {
               <button
                 type="button"
                 mix={[
-                  action,
                   submitAction,
                   on("click", () => {
                     if (!work.trim()) {
