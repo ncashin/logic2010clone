@@ -90,31 +90,181 @@ function argumentParts(problem: string) {
   };
 }
 
-const ruleHelp: Record<string, { taken: string; text: string }> = {
-  pr: { taken: "pr1", text: "A premise from the problem." },
-  "ass cd": { taken: "ass cd", text: "Assume the if-part." },
-  "ass id": { taken: "ass id", text: "Assume the opposite." },
-  r: { taken: "1 r", text: "Copy an earlier line." },
-  mp: { taken: "1 2 mp", text: "From P and P→Q, get Q." },
-  mt: { taken: "1 2 mt", text: "From ~Q and P→Q, get ~P." },
-  dn: { taken: "1 dn", text: "Cancel two nots." },
-  cd: { taken: "1 cd", text: "Done when the then-part is shown." },
-  id: { taken: "1 2 id", text: "Done when a line and its opposite both appear." },
-  dd: { taken: "1 dd", text: "Done when the shown line is copied." },
-  "show conc": { taken: "show conc", text: "Start the conclusion." },
-  "show cons": { taken: "show cons", text: "Start the then-part." },
-  "show ant": { taken: "show ant 1", text: "Start the if-part." },
-  "show negcons": { taken: "show negcons 1", text: "Start the opposite of the then-part." },
-  "show unneg": { taken: "show unneg 1", text: "Start the formula under the not." },
+interface HelpLine {
+  number: string;
+  formula: string;
+  annotation: string;
+  depth: number;
+  strike?: boolean;
+  closes?: boolean;
+}
+
+const ruleExamples: Record<string, { taken: string; lines: HelpLine[] }> = {
+  pr: {
+    taken: "pr1",
+    lines: [
+      { number: "1", formula: "P→Q", annotation: "pr1", depth: 0 },
+      { number: "2", formula: "P", annotation: "pr2", depth: 0 },
+    ],
+  },
+  "ass cd": {
+    taken: "ass cd",
+    lines: [
+      { number: "1", formula: "Show P→Q", annotation: "show conc", depth: 0 },
+      { number: "2", formula: "P", annotation: "ass cd", depth: 1 },
+    ],
+  },
+  "ass id": {
+    taken: "ass id",
+    lines: [
+      { number: "1", formula: "Show P", annotation: "show conc", depth: 0 },
+      { number: "2", formula: "~P", annotation: "ass id", depth: 1 },
+    ],
+  },
+  r: {
+    taken: "1 r",
+    lines: [
+      { number: "1", formula: "P", annotation: "pr1", depth: 0 },
+      { number: "2", formula: "P", annotation: "1 r", depth: 0 },
+    ],
+  },
+  mp: {
+    taken: "1 2 mp",
+    lines: [
+      { number: "1", formula: "P→Q", annotation: "pr1", depth: 0 },
+      { number: "2", formula: "P", annotation: "pr2", depth: 0 },
+      { number: "3", formula: "Q", annotation: "1 2 mp", depth: 0 },
+    ],
+  },
+  mt: {
+    taken: "1 2 mt",
+    lines: [
+      { number: "1", formula: "P→Q", annotation: "pr1", depth: 0 },
+      { number: "2", formula: "~Q", annotation: "pr2", depth: 0 },
+      { number: "3", formula: "~P", annotation: "1 2 mt", depth: 0 },
+    ],
+  },
+  dn: {
+    taken: "1 dn",
+    lines: [
+      { number: "1", formula: "~~P", annotation: "pr1", depth: 0 },
+      { number: "2", formula: "P", annotation: "1 dn", depth: 0 },
+    ],
+  },
+  cd: {
+    taken: "3 cd",
+    lines: [
+      { number: "1", formula: "Show P→Q", annotation: "3 cd", depth: 0, strike: true },
+      { number: "2", formula: "P", annotation: "ass cd", depth: 1 },
+      { number: "3", formula: "Q", annotation: "pr1", depth: 1, closes: true },
+    ],
+  },
+  id: {
+    taken: "3 4 id",
+    lines: [
+      { number: "1", formula: "Show P", annotation: "3 4 id", depth: 0, strike: true },
+      { number: "2", formula: "~P", annotation: "ass id", depth: 1 },
+      { number: "3", formula: "Q", annotation: "pr1", depth: 1 },
+      { number: "4", formula: "~Q", annotation: "pr2", depth: 1, closes: true },
+    ],
+  },
+  dd: {
+    taken: "2 dd",
+    lines: [
+      { number: "1", formula: "Show P", annotation: "2 dd", depth: 0, strike: true },
+      { number: "2", formula: "P", annotation: "pr1", depth: 1, closes: true },
+    ],
+  },
+  "show conc": {
+    taken: "show conc",
+    lines: [{ number: "1", formula: "Show Q", annotation: "show conc", depth: 0 }],
+  },
+  "show cons": {
+    taken: "show cons",
+    lines: [
+      { number: "1", formula: "P→Q", annotation: "pr1", depth: 0 },
+      { number: "2", formula: "Show Q", annotation: "show cons", depth: 0 },
+    ],
+  },
+  "show ant": {
+    taken: "show ant 1",
+    lines: [
+      { number: "1", formula: "P→Q", annotation: "pr1", depth: 0 },
+      { number: "2", formula: "Show P", annotation: "show ant 1", depth: 0 },
+    ],
+  },
+  "show negcons": {
+    taken: "show negcons 1",
+    lines: [
+      { number: "1", formula: "P→Q", annotation: "pr1", depth: 0 },
+      { number: "2", formula: "Show ~Q", annotation: "show negcons 1", depth: 0 },
+    ],
+  },
+  "show unneg": {
+    taken: "show unneg 1",
+    lines: [
+      { number: "1", formula: "~P", annotation: "pr1", depth: 0 },
+      { number: "2", formula: "Show P", annotation: "show unneg 1", depth: 0 },
+    ],
+  },
 };
 
-const sampleDerivation = [
-  { number: "1", formula: "Show Q", annotation: "show conc", depth: 0, strike: true },
-  { number: "2", formula: "P→Q", annotation: "pr1", depth: 1 },
-  { number: "3", formula: "~~P", annotation: "pr2", depth: 1 },
-  { number: "4", formula: "P", annotation: "3 dn", depth: 1 },
-  { number: "5", formula: "Q", annotation: "2 4 mp", depth: 1, closes: true },
-];
+function withPremises(lines: HelpLine[], premises: string[]): HelpLine[] {
+  let replaced = new Map<string, string>();
+  let next = lines.map((line) => {
+    let match = /^pr(\d+)$/i.exec(line.annotation.trim());
+    if (!match) return line;
+    let formula = premises[Number(match[1]) - 1];
+    if (!formula) return line;
+    if (formula !== line.formula) replaced.set(line.formula, formula);
+    return { ...line, formula };
+  });
+  return next.map((line) => {
+    if (/^pr\d+$/i.test(line.annotation.trim())) return line;
+    let formula = replaced.get(line.formula);
+    return formula ? { ...line, formula } : line;
+  });
+}
+
+function exampleFor(name: string, premises: string[]) {
+  let example = ruleExamples[name];
+  if (!example) return null;
+  if (name === "pr" && premises.length > 0) {
+    return {
+      taken: "pr1",
+      lines: premises.map((formula, index) => ({
+        number: String(index + 1),
+        formula,
+        annotation: `pr${index + 1}`,
+        depth: 0,
+      })),
+    };
+  }
+  return { ...example, lines: withPremises(example.lines, premises) };
+}
+
+function CiteSlots({ text }: { text: string }) {
+  let parts = text.split(/(\d+)/);
+  return (
+    <span mix={css({ whiteSpace: "nowrap" })}>
+      {parts.map((part, index) =>
+        /^\d+$/.test(part) ? (
+          <span
+            key={index}
+            mix={css({
+              display: "inline-block",
+              width: "1em",
+              marginInline: "0.15em",
+              borderBottom: `1px solid ${t.colors.text.secondary}`,
+            })}
+          />
+        ) : (
+          <span key={index}>{part}</span>
+        ),
+      )}
+    </span>
+  );
+}
 
 function hasWork(lines: DerivationLine[]) {
   return lines.some((line) => line.symbols.trim() !== "" || line.annotation.trim() !== "");
@@ -142,6 +292,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
   let citeHover: number | null = null;
   let dirty = false;
   let helpOpen = false;
+  let helpOpenRules = new Set<string>();
   let past: string[] = [];
   let future: string[] = [];
   let typing = false;
@@ -404,6 +555,12 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
       return annotationCites(active[citeHover]?.annotation ?? "").includes(index + 1);
     }
 
+    function citedPremise() {
+      if (citeHover == null) return null;
+      let match = /^\s*pr\s*(\d+)\s*$/i.exec(active[citeHover]?.annotation ?? "");
+      return match?.[1] ? Number(match[1]) : null;
+    }
+
     function renderRow(index: number, line: DerivationLine, rowNumber: number) {
       let checked = activeResult.lines[index];
       let showCaret = checked?.boxed != null && hoverLine === index;
@@ -475,7 +632,6 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                 justifyContent: "center",
                 minWidth: "0",
                 paddingLeft: `${line.depth * 24}px`,
-                ...citedMark,
               }),
             ]}
           >
@@ -484,7 +640,15 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
             let showText = /^(\s*show\b)(.*)$/i.exec(line.symbols);
             let crossed = Boolean(checked?.show && checked.boxed && showText);
             return (
-              <div mix={css({ display: "flex", flexDirection: "row", alignItems: "center", minWidth: "0" })}>
+              <div
+                mix={css({
+                  display: "flex",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  minWidth: "0",
+                  ...citedMark,
+                })}
+              >
                 {crossed && showText ? (
                   <span
                     mix={css({
@@ -505,7 +669,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                       minWidth: "0",
                       flex: "1",
                       paddingLeft: crossed ? "0px" : t.space.sm,
-                      ...citedMark,
+                      backgroundColor: "transparent",
                       "&:hover": { backgroundColor: t.surface.lvl1 },
                     }),
                     ...watchLine(index),
@@ -859,7 +1023,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                 margin: 0,
                 color: t.colors.text.secondary,
                 fontSize: t.fontSize.lg,
-                fontWeight: t.fontWeight.normal,
+                fontWeight: t.fontWeight.semibold,
                 lineHeight: t.lineHeight.normal,
                 whiteSpace: "nowrap",
               }),
@@ -912,61 +1076,92 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                     lineHeight: t.lineHeight.normal,
                   })}
                 >
-                  <div
-                    mix={css({
-                      marginBottom: t.space.lg,
-                      padding: t.space.md,
-                      backgroundColor: t.surface.lvl1,
-                    })}
-                  >
-                    <div mix={css({ marginBottom: t.space.sm, color: t.colors.text.muted })}>
-                      P→Q. ~~P ∴ Q
-                    </div>
-                    {sampleDerivation.map((line) => (
-                      <div
-                        key={line.number}
-                        mix={css({
-                          display: "grid",
-                          gridTemplateColumns: "1.25rem 1fr 5.5rem",
-                          columnGap: t.space.sm,
-                          alignItems: "center",
-                          paddingLeft: `${line.depth * 12}px`,
-                        })}
-                      >
-                        <span mix={css({ textAlign: "right", color: t.colors.text.muted })}>
-                          {line.number}
-                        </span>
-                        <span
-                          mix={css({
-                            textDecoration: line.strike ? "line-through" : "none",
-                            boxShadow: line.closes ? `inset -2px 0 0 ${t.colors.text.primary}` : "none",
-                          })}
-                        >
-                          {line.formula}
-                        </span>
-                        <span mix={css({ color: t.colors.text.secondary })}>{line.annotation}</span>
-                      </div>
-                    ))}
-                  </div>
                   {simpleAnnotations.map((rule) => {
-                    let help = ruleHelp[rule.name];
+                    let example = exampleFor(rule.name, parts?.premises ?? []);
+                    let written =
+                      example?.lines.find((line) => line.annotation === example.taken) ?? example?.lines[0];
+                    let setup = example?.lines.filter((line) => line !== written) ?? [];
+                    let open = helpOpenRules.has(rule.name);
                     return (
-                    <div
-                      key={rule.name}
-                      mix={css({
-                        display: "grid",
-                        gridTemplateColumns: "9rem 1fr",
-                        gap: t.space.sm,
-                        paddingBlock: t.space.xs,
-                      })}
-                    >
-                      <div>
-                        <div mix={css({ color: t.colors.text.secondary })}>{rule.name}</div>
-                        <div>{help?.taken}</div>
-                        <div mix={css({ color: t.colors.text.muted })}>{rule.symbols}</div>
+                      <div key={rule.name}>
+                        <button
+                          type="button"
+                          mix={[
+                            css({
+                              display: "flex",
+                              alignItems: "center",
+                              gap: t.space.sm,
+                              width: "100%",
+                              margin: 0,
+                              paddingBlock: t.space.xs,
+                              paddingInline: 0,
+                              border: "none",
+                              backgroundColor: "transparent",
+                              color: t.colors.text.primary,
+                              font: "inherit",
+                              fontSize: t.fontSize.sm,
+                              lineHeight: t.lineHeight.normal,
+                              textAlign: "left",
+                              cursor: "pointer",
+                            }),
+                            on("click", () => {
+                              if (helpOpenRules.has(rule.name)) helpOpenRules.delete(rule.name);
+                              else helpOpenRules.add(rule.name);
+                              handle.update();
+                            }),
+                          ]}
+                        >
+                          <Icon
+                            icon={open ? ChevronDown : ChevronRight}
+                            mix={css({ width: t.space.lg, height: t.space.lg, flexShrink: "0" })}
+                          />
+                          <span mix={css({ width: "7.5rem", flexShrink: "0", color: t.colors.text.secondary })}>
+                            {rule.name}
+                          </span>
+                          <span mix={css({ flex: "1", minWidth: "0" })}>{written?.formula}</span>
+                          {example ? <CiteSlots text={example.taken} /> : null}
+                        </button>
+                        {open && setup.length > 0 ? (
+                          <div
+                            mix={css({
+                              marginBottom: t.space.sm,
+                              marginLeft: t.space.xl,
+                              padding: t.space.sm,
+                              backgroundColor: t.surface.lvl1,
+                            })}
+                          >
+                            {setup.map((line) => (
+                              <div
+                                key={line.number}
+                                mix={css({
+                                  display: "grid",
+                                  gridTemplateColumns: "1.25rem 1fr 7rem",
+                                  columnGap: t.space.sm,
+                                  alignItems: "center",
+                                  paddingLeft: `${line.depth * 12}px`,
+                                })}
+                              >
+                                <span mix={css({ textAlign: "right", color: t.colors.text.muted })}>
+                                  {line.number}
+                                </span>
+                                <span
+                                  mix={css({
+                                    textDecoration: line.strike ? "line-through" : "none",
+                                    boxShadow: line.closes
+                                      ? `inset -2px 0 0 ${t.colors.text.primary}`
+                                      : "none",
+                                  })}
+                                >
+                                  {line.formula}
+                                </span>
+                                <span mix={css({ color: t.colors.text.secondary })}>
+                                  {line.annotation}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
-                      <div>{help?.text}</div>
-                    </div>
                     );
                   })}
                 </div>
@@ -1116,13 +1311,31 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                     gap: t.space.xs,
                   })}
                 >
-                  {premise}.
+                  <span
+                    mix={css({
+                      backgroundColor: citedPremise() === index + 1 ? "#e4eef8" : "transparent",
+                    })}
+                  >
+                    {premise}.
+                  </span>
                   <span mix={css({ color: t.colors.text.muted, fontSize: t.fontSize.sm })}>
                     pr{index + 1}
                   </span>
                 </span>
               ))}
-              <span>∴ {parts.conclusion}</span>
+              <span
+                mix={css({
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: t.space.xs,
+                })}
+              >
+                <span>∴ {parts.conclusion}</span>
+                <span mix={css({ color: t.colors.text.muted, fontSize: t.fontSize.sm })}>
+                  conc
+                </span>
+              </span>
             </div>
           ) : (
             <p

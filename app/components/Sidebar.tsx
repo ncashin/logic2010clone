@@ -11,6 +11,7 @@ import {
   GitBranch,
   Library,
   ListChecks,
+  MessageSquare,
   Notebook,
   NotebookPen,
   ScrollText,
@@ -547,6 +548,30 @@ export function Sidebar(handle: Handle<SidebarProps>) {
               >
                 Resources
               </h2>
+              <button
+                type="button"
+                mix={[
+                  css({
+                    display: "flex",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: t.space.sm,
+                    width: t.size.full,
+                    paddingInline: t.space.md,
+                    paddingBlock: t.space.xs,
+                    border: "none",
+                    font: "inherit",
+                    textAlign: "left",
+                    color: t.colors.choice.ink,
+                    backgroundColor: "transparent",
+                    cursor: "pointer",
+                    "&:hover": { backgroundColor: "#e4eef8" },
+                  }),
+                ]}
+              >
+                <Icon icon={MessageSquare} mix={css({ width: t.space.xl, height: t.space.xl })} />
+                Feedback
+              </button>
               <button
                 type="button"
                 mix={[
