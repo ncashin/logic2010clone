@@ -369,13 +369,22 @@
     }
 
     /*
-      Correct the inability to style the border radius in iOS Safari.
+      Plain appearance lets author border-radius apply. `appearance: button`
+      also installs the native macOS arrow, which fights `cursor: pointer`
+      and flashes the pointer back to the default arrow while the mouse moves
+      across the control.
     */
 
     button,
     input:where([type="button"], [type="reset"], [type="submit"]),
     ::file-selector-button {
-        appearance: button;
+        appearance: none;
+        cursor: pointer;
+    }
+
+    button:disabled,
+    input:where([type="button"], [type="reset"], [type="submit"]):disabled {
+        cursor: default;
     }
 
     /*

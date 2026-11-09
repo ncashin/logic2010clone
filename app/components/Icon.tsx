@@ -1,4 +1,5 @@
 import type { GitBranch } from "lucide";
+import { css } from "pitlane/theme";
 import { type Handle, type MixInput } from "remix/component";
 
 export type LucideIcon = typeof GitBranch;
@@ -17,7 +18,7 @@ export function Icon(handle: Handle<IconProps>) {
         xmlns="http://www.w3.org/2000/svg"
         width="24"
         height="24"
-        mix={mix}
+        mix={[css({ pointerEvents: "none" }), mix]}
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"

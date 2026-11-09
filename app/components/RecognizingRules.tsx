@@ -2,7 +2,7 @@ import { css } from "pitlane/theme";
 import { type Handle, on } from "remix/component";
 
 import { problemOnAssignment } from "#app/data/assignments.ts";
-import type { Problem } from "#app/data/problems.ts";
+import { problemStatement, type Problem } from "#app/data/problems.ts";
 import { getProgress, writeProgress } from "#app/data/progress.ts";
 import { sectionPadding } from "#app/components/Welcome.tsx";
 import { formatFormula, parseArgument, recognizeRule } from "#app/logic/derivation.ts";
@@ -328,12 +328,12 @@ export function RecognizingRules(handle: Handle<RecognizingRulesProps>) {
             <label
               mix={css({
                 display: "flex",
-                flexShrink: "0",
-                flexDirection: "row",
-                alignItems: "center",
-                gap: t.space.md,
+                flex: "1",
+                minWidth: "0",
+                flexDirection: "column",
+                alignItems: "flex-start",
+                gap: t.space.sm,
                 fontSize: t.fontSize.md,
-                whiteSpace: "nowrap",
               })}
             >
               Please enter the rule that applies, or enter "None".
@@ -350,15 +350,18 @@ export function RecognizingRules(handle: Handle<RecognizingRulesProps>) {
                     margin: 0,
                     paddingInline: t.space.sm,
                     paddingBlock: t.space.xs,
-                    border: "none",
+                    borderWidth: t.space.px,
+                    borderStyle: "solid",
+                    borderColor: t.colors.border.default,
                     outline: "none",
-                    backgroundColor: "transparent",
+                    backgroundColor: t.surface.lvl0,
                     color: t.colors.text.primary,
                     font: "inherit",
                     fontSize: t.fontSize.md,
                     lineHeight: t.lineHeight.normal,
                     "&:focus": {
                       outline: "none",
+                      borderColor: t.colors.text.secondary,
                     },
                   }),
                 ]}

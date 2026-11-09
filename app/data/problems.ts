@@ -1,3 +1,5 @@
+import { formatLogicStatement } from "#app/logic/wff.ts";
+
 export const problemTypes = [
   { slug: "derivation", name: "Derivation" },
   { slug: "invalidity", name: "Invalidity" },
@@ -1333,7 +1335,12 @@ export function findProblem(type: string, number: string) {
   return problems.find((problem) => problem.type === type && problem.number === number);
 }
 
+export function problemStatement(problem: Problem) {
+  if (problem.type === "parsing" || problem.type === "symbolization") return problem.problem;
+  return formatLogicStatement(problem.problem);
+}
+
 export function problemLabel(problem: Problem, style: "statement" | "typed" = "statement") {
   if (style === "typed") return `${problemTypeName(problem.type)} ${problem.number}`;
-  return `${problem.number}: ${problem.problem}`;
+  return `${problem.number}: ${problemStatement(problem)}`;
 }

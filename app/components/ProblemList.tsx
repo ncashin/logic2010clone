@@ -49,6 +49,38 @@ function sectionLabel(problems: Problem[]) {
   return `${first}–${last}`;
 }
 
+function sectionBlurb(problems: Problem[]) {
+  let type = problems[0]?.type;
+  let blob = problems.map((problem) => problem.problem).join(" ");
+  let topic = topicPhrase(blob);
+  if (type === "symbolization") return `Sentences to symbolize, ${topic}`;
+  if (type === "parsing") return `Formulas to parse, ${topic}`;
+  if (type === "recognizing-rules") return `Name the rule used, ${topic}`;
+  if (type === "truth-tables") return `Truth tables, ${topic}`;
+  if (type === "invalidity") return `Show the argument is invalid, ${topic}`;
+  let theorems = problems.every(
+    (problem) => /^\s*\.:/.test(problem.problem) || / T\d/.test(problem.number),
+  );
+  let short = problems.every((problem) => (/^\d+/.exec(problem.number.split(".")[1] ?? "")?.[0].length ?? 0) >= 4);
+  let kind = theorems ? "Theorems to derive" : short ? "Short derivations" : "Derivations";
+  return `${kind}, ${topic}`;
+}
+
+function topicPhrase(blob: string) {
+  if (blob.includes("%")) return "using definite descriptions";
+  if (blob.includes("=") || blob.includes("<>")) return "using identity";
+  if (blob.includes("@") || blob.includes("!")) return "using quantifiers";
+  if (blob.includes("?NOV") || blob.includes("?DNF") || blob.includes("?CNF")) return "into normal form";
+  if (blob.includes("&") || blob.includes("|") || blob.includes("<->")) {
+    return "using conjunction, disjunction, and the biconditional";
+  }
+  if (blob.includes("->") || blob.includes("~")) return "using negation and the conditional";
+  return "in ordinary language";
+}
+
+/** One-line chapter header: 14px type at 1.5 line height, 12px padding above, 2px below. */
+const chapterHeaderOffset = "35px";
+
 const stateColor: Record<ProblemStatus, string> = {
   correct: "#008000",
   incorrect: "#cc0000",
@@ -89,8 +121,10 @@ export function ProblemList(handle: Handle<ProblemListProps>) {
             .includes(needle),
         )
       : problems;
-    let chapters: { chapter: string; sections: { id: string; label: string; problems: Problem[] }[] }[] =
-      [];
+    let chapters: {
+      chapter: string;
+      sections: { id: string; label: string; blurb: string; problems: Problem[] }[];
+    }[] = [];
     for (let problem of visible) {
       let chapter = problem.number.split(".")[0] ?? problem.number;
       let id = sectionId(problem.number);
@@ -101,10 +135,22 @@ export function ProblemList(handle: Handle<ProblemListProps>) {
       }
       let section = group.sections.find((item) => item.id === id);
       if (section) section.problems.push(problem);
-      else group.sections.push({ id, label: "", problems: [problem] });
+      else group.sections.push({ id, label: "", blurb: "", problems: [problem] });
     }
     for (let group of chapters) {
-      for (let section of group.sections) section.label = sectionLabel(section.problems);
+      let merged: typeof group.sections = [];
+      for (let section of group.sections) {
+        section.label = sectionLabel(section.problems);
+        section.blurb = sectionBlurb(section.problems);
+        let previous = merged[merged.length - 1];
+        if (previous && previous.blurb === section.blurb) {
+          previous.problems.push(...section.problems);
+          previous.label = sectionLabel(previous.problems);
+        } else {
+          merged.push(section);
+        }
+      }
+      group.sections = merged;
     }
 
     return (
@@ -181,16 +227,13 @@ export function ProblemList(handle: Handle<ProblemListProps>) {
                 zIndex: "2",
                 margin: 0,
                 paddingInline: t.space.md,
-                paddingBlock: t.space.xs,
-                backgroundColor: t.surface.lvl0,
-                color: t.colors.text.muted,
-                fontSize: t.fontSize.xs,
-                fontWeight: t.fontWeight.medium,
-                letterSpacing: t.letterSpacing.wide,
+                paddingTop: t.space.lg,
+                paddingBottom: t.space.sm,
+                backgroundColor: t.colors.choice.faceHover,
+                color: t.colors.text.primary,
+                fontSize: t.fontSize.sm,
+                fontWeight: t.fontWeight.semibold,
                 lineHeight: t.lineHeight.normal,
-                borderBottomWidth: t.space.px,
-                borderBottomStyle: "solid",
-                borderBottomColor: t.colors.border.subtle,
               })}
             >
               Chapter {group.chapter}
@@ -201,16 +244,31 @@ export function ProblemList(handle: Handle<ProblemListProps>) {
             {handle.props.chapters === false ? null : (
             <h3
               mix={css({
+                position: "sticky",
+                top: chapterHeaderOffset,
+                zIndex: "1",
                 margin: 0,
                 paddingInline: t.space.md,
                 paddingBlock: t.space.xs,
-                color: t.colors.text.muted,
-                fontSize: t.fontSize.xxs,
+                backgroundColor: t.colors.choice.faceHover,
+                color: t.colors.text.primary,
+                fontSize: t.fontSize.sm,
                 fontWeight: t.fontWeight.normal,
                 lineHeight: t.lineHeight.normal,
               })}
             >
               {section.label}
+              <span
+                mix={css({
+                  display: "block",
+                  color: t.colors.text.muted,
+                  fontSize: t.fontSize.xs,
+                  fontWeight: t.fontWeight.normal,
+                  letterSpacing: t.letterSpacing.normal,
+                })}
+              >
+                {section.blurb}
+              </span>
             </h3>
             )}
             <ul

@@ -2,6 +2,8 @@ import {
   ArrowLeft,
   Ban,
   Braces,
+  Circle,
+  CircleCheck,
   CircleHelp,
   Clipboard,
   ExternalLink,
@@ -24,6 +26,7 @@ import { Icon } from "#app/components/Icon.tsx";
 import { ProblemList } from "#app/components/ProblemList.tsx";
 import { assignmentProblemList } from "#app/data/assignments.ts";
 import { problemId, problemsForType } from "#app/data/problems.ts";
+import { listProgress, progressFor, type ProgressMap, watchProgress } from "#app/data/progress.ts";
 import { routes } from "#app/routes.ts";
 import { t } from "#app/theme.ts";
 
@@ -99,6 +102,29 @@ export function Sidebar(handle: Handle<SidebarProps>) {
         return first ? problemId(first.type, first.number) : "";
       })();
   let selectionNonce = 0;
+  let progress: ProgressMap = new Map();
+
+  handle.queueTask(() => {
+    void refreshProgress();
+  });
+  watchProgress(() => {
+    void refreshProgress();
+  }, handle.signal);
+
+  async function refreshProgress() {
+    progress = await listProgress();
+    handle.update();
+  }
+
+  function assignmentScore(slug: string) {
+    let problems = assignmentProblemList(slug);
+    let total = problems.reduce((sum, problem) => sum + (problem.points ?? 1), 0);
+    let earned = problems.reduce((sum, problem) => {
+      let points = problem.points ?? 1;
+      return sum + (progressFor(progress, problem).submitted ? points : 0);
+    }, 0);
+    return { earned, total, done: total > 0 && earned === total };
+  }
 
   function syncFromLocation() {
     let parts = new URL(window.location.href).pathname.split("/").filter(Boolean);
@@ -301,11 +327,36 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                   fontSize: t.fontSize.sm,
                   fontWeight: t.fontWeight.semibold,
                   opacity: panel === "assignment" ? 1 : 0,
+                  pointerEvents: "none",
                   transition: "opacity 220ms ease",
                 }),
               ]}
             >
-              Problems
+              {panel === "assignment"
+                ? (() => {
+                    let score = assignmentScore(selectedAssignment ?? "");
+                    let due = assignments.find(
+                      (assignment) => assignmentSlug(assignment.name) === selectedAssignment,
+                    )?.due;
+                    return (
+                      <>
+                        Problems: {score.earned}/{score.total} pts
+                        {due ? (
+                          <span
+                            mix={css({
+                              display: "block",
+                              color: t.colors.text.muted,
+                              fontSize: t.fontSize.xs,
+                              fontWeight: t.fontWeight.normal,
+                            })}
+                          >
+                            {due}
+                          </span>
+                        ) : null}
+                      </>
+                    );
+                  })()
+                : "Problems"}
             </h2>
           </div>
           <div mix={[css({ position: "relative", flex: "1", minHeight: "0" })]}>
@@ -409,6 +460,7 @@ export function Sidebar(handle: Handle<SidebarProps>) {
               {assignments.map((assignment) => {
                 let slug = assignmentSlug(assignment.name);
                 let first = assignmentProblemList(slug)[0];
+                let score = assignmentScore(slug);
                 return (
                   <a
                     key={assignment.name}
@@ -464,13 +516,25 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                     <span mix={css({ minWidth: "0" })}>{assignment.name}</span>
                     <span
                       mix={css({
+                        display: "flex",
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: t.space.sm,
                         marginLeft: "auto",
                         flexShrink: "0",
-                        fontSize: t.fontSize.sm,
                         color: t.colors.text.muted,
                       })}
                     >
-                      {assignment.due}
+                      {score.earned}/{score.total} pts
+                      <Icon
+                        icon={score.done ? CircleCheck : Circle}
+                        mix={css({
+                          width: t.fontSize.xl,
+                          height: t.fontSize.xl,
+                          flexShrink: "0",
+                          color: score.done ? "#008000" : t.colors.text.muted,
+                        })}
+                      />
                     </span>
                   </a>
                 );
@@ -550,7 +614,6 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                   opacity: panel === "problems" ? 1 : 0,
                   pointerEvents: panel === "problems" ? "auto" : "none",
                   transition: "opacity 220ms ease",
-                  fontFamily: t.fontFamily.mono,
                   fontSize: t.fontSize.sm,
                   lineHeight: t.lineHeight.normal,
                 }),
@@ -574,7 +637,6 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                   opacity: panel === "assignment" ? 1 : 0,
                   pointerEvents: panel === "assignment" ? "auto" : "none",
                   transition: "opacity 220ms ease",
-                  fontFamily: t.fontFamily.mono,
                   fontSize: t.fontSize.sm,
                   lineHeight: t.lineHeight.normal,
                 }),

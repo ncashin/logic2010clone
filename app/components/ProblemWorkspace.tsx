@@ -4,7 +4,7 @@ import { type Handle, on } from "remix/component";
 import { problemOnAssignment } from "#app/data/assignments.ts";
 import type { Problem } from "#app/data/problems.ts";
 import { getProgress, writeProgress } from "#app/data/progress.ts";
-import { problemTypeName } from "#app/data/problems.ts";
+import { problemStatement, problemTypeName } from "#app/data/problems.ts";
 import { sectionPadding } from "#app/components/Welcome.tsx";
 import { t } from "#app/theme.ts";
 
@@ -120,7 +120,7 @@ export function ProblemWorkspace(handle: Handle<ProblemWorkspaceProps>) {
               fontWeight: t.fontWeight.normal,
             })}
           >
-            {problemTypeName(problem.type)} {problem.number}: {problem.problem}
+            {problemTypeName(problem.type)} {problem.number}: {problemStatement(problem)}
           </h2>
           <div mix={css({ display: "flex", flexShrink: "0", flexDirection: "row", gap: t.space.sm })}>
             <button

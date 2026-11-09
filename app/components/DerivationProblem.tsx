@@ -3,7 +3,7 @@ import { css } from "pitlane/theme";
 import { type Handle, on } from "remix/component";
 
 import { problemOnAssignment } from "#app/data/assignments.ts";
-import type { Problem } from "#app/data/problems.ts";
+import { problemStatement, type Problem } from "#app/data/problems.ts";
 import { getProgress, writeProgress } from "#app/data/progress.ts";
 import { Icon } from "#app/components/Icon.tsx";
 import {
@@ -622,7 +622,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                 <span mix={css({ alignSelf: "flex-start" })}>∴ {parts.conclusion}</span>
               </span>
             ) : (
-              <span mix={css({ fontSize: t.fontSize.lg })}>{problem.problem}</span>
+              <span mix={css({ fontSize: t.fontSize.lg })}>{problemStatement(problem)}</span>
             )}
           </h2>
           <div

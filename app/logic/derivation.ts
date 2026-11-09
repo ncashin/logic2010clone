@@ -214,11 +214,9 @@ export function formatFormula(formula: Formula): string {
     case "atom":
       return formula.name;
     case "not":
-      return formula.of.kind === "if" ? `~(${formatFormula(formula.of)})` : `~${formatFormula(formula.of)}`;
-    case "if": {
-      let left = formula.if.kind === "if" ? `(${formatFormula(formula.if)})` : formatFormula(formula.if);
-      return `${left}→${formatFormula(formula.then)}`;
-    }
+      return `~${formatFormula(formula.of)}`;
+    case "if":
+      return `(${formatFormula(formula.if)}→${formatFormula(formula.then)})`;
   }
 }
 
