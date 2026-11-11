@@ -1,6 +1,8 @@
+import { Check } from "lucide";
 import { css } from "pitlane/theme";
 import { type Handle, on } from "remix/component";
 
+import { Icon } from "#app/components/Icon.tsx";
 import { problemOnAssignment } from "#app/data/assignments.ts";
 import { problemStatement, type Problem } from "#app/data/problems.ts";
 import { getProgress, peekProgress, writeProgress } from "#app/data/progress.ts";
@@ -10,6 +12,9 @@ import { t } from "#app/theme.ts";
 
 function actionStyle(tone: "default" | "reset" | "submit") {
   return css({
+    display: "inline-flex",
+    alignItems: "center",
+    gap: t.space.xs,
     paddingInline: t.space.md,
     paddingBlock: t.space.xs,
     border: "none",
@@ -153,38 +158,32 @@ export function RecognizingRules(handle: Handle<RecognizingRulesProps>) {
         <div
           mix={css({
             display: "flex",
+            flexDirection: "column",
+            gap: t.space.md,
+            paddingBottom: t.space.xxl,
+            boxSizing: "border-box",
+          })}
+        >
+        <div
+          mix={css({
+            display: "flex",
             flexDirection: "row",
-            alignItems: "flex-start",
+            alignItems: "center",
             justifyContent: "space-between",
             gap: t.space.md,
-            paddingBottom: t.space.md,
           })}
         >
           <h2
             mix={css({
-              display: "flex",
-              flexWrap: "wrap",
-              alignItems: "baseline",
-              gap: "1.25em",
               margin: 0,
-              flex: "1",
-              minWidth: "0",
-              color: t.colors.text.primary,
-              fontSize: t.fontSize.md,
-              fontWeight: t.fontWeight.normal,
+              color: t.colors.text.secondary,
+              fontSize: t.fontSize.lg,
+              fontWeight: t.fontWeight.semibold,
               lineHeight: t.lineHeight.normal,
+              whiteSpace: "nowrap",
             })}
           >
-            <span
-              mix={css({
-                alignSelf: "flex-start",
-                color: t.colors.text.secondary,
-                fontSize: t.fontSize.lg,
-                whiteSpace: "nowrap",
-              })}
-            >
-              Recognizing Rules {problem.number}
-            </span>
+            Recognizing Rules {problem.number}
           </h2>
           <div
             mix={css({
@@ -264,6 +263,7 @@ export function RecognizingRules(handle: Handle<RecognizingRulesProps>) {
                 }),
               ]}
             >
+              <Icon icon={Check} mix={css({ width: t.space.xl, height: t.space.xl })} />
               Check
             </button>
             <button
@@ -301,6 +301,7 @@ export function RecognizingRules(handle: Handle<RecognizingRulesProps>) {
               </button>
             ) : null}
           </div>
+        </div>
         </div>
         {lines ? (
           <div
