@@ -243,8 +243,9 @@ function exampleFor(name: string, premises: string[]) {
   return { ...example, lines: withPremises(example.lines, premises) };
 }
 
-function CiteSlots({ text }: { text: string }) {
-  let parts = text.split(/(\d+)/);
+function CiteSlots(handle: Handle<{ text: string }>) {
+  return () => {
+  let parts = handle.props.text.split(/(\d+)/);
   return (
     <span mix={css({ whiteSpace: "nowrap" })}>
       {parts.map((part, index) =>
@@ -264,6 +265,7 @@ function CiteSlots({ text }: { text: string }) {
       )}
     </span>
   );
+  };
 }
 
 function hasWork(lines: DerivationLine[]) {
@@ -567,8 +569,20 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
       let cited = citedByHover(index);
       let citedMark = cited ? { backgroundColor: "#e4eef8" } : {};
       let placed = `${rowNumber}`;
+      let band = hoverLine === index ? "#e4eef8" : rowNumber % 2 === 0 ? t.surface.lvl2 : t.surface.lvl0;
       return (
         <div key={index} mix={css({ display: "contents" })}>
+          <div
+            aria-hidden="true"
+            mix={css({
+              gridColumn: "1 / -1",
+              gridRow: placed,
+              alignSelf: "stretch",
+              backgroundColor: band,
+              boxShadow: `inset 0 -1px 0 ${t.colors.border.subtle}`,
+              pointerEvents: "none",
+            })}
+          />
           {showCaret ? (
             <button
               type="button"
@@ -612,6 +626,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                   fontSize: t.fontSize.md,
                   fontWeight: t.fontWeight.normal,
                   lineHeight: t.lineHeight.normal,
+                  paddingBlock: t.space.sm,
                   textAlign: "right",
                 }),
                 numberSlot,
@@ -645,6 +660,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                   display: "flex",
                   flexDirection: "row",
                   alignItems: "center",
+                  width: "100%",
                   minWidth: "0",
                   ...citedMark,
                 })}
@@ -666,11 +682,12 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                   mix={[
                     lineField,
                     css({
+                      width: "100%",
                       minWidth: "0",
                       flex: "1",
+                      paddingBlock: t.space.sm,
                       paddingLeft: crossed ? "0px" : t.space.sm,
                       backgroundColor: "transparent",
-                      "&:hover": { backgroundColor: t.surface.lvl1 },
                     }),
                     ...watchLine(index),
                     on("focus", () => {
@@ -686,7 +703,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                     }),
                   ]}
                   data-line={index}
-                  placeholder={line.depth > 0 ? "" : "Formula"}
+                  placeholder="Formula"
                   readOnly={readOnly}
                   type="text"
                   value={crossed && showText ? showText[2] : line.symbols}
@@ -735,10 +752,9 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
               css({
                 gridColumn: "3",
                 gridRow: placed,
+                paddingBlock: t.space.sm,
                 paddingInline: t.space.sm,
                 color: checked?.error ? t.colors.text.warning : t.colors.text.primary,
-                "&:hover": { backgroundColor: t.surface.lvl1 },
-                "&:focus": { backgroundColor: t.surface.lvl1 },
               }),
               ...watchLine(index),
               on("mouseenter", () => {
@@ -763,7 +779,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
               on("keydown", (event) => {
                 if (readOnly || event.key !== "Enter") return;
                 event.preventDefault();
-                remember(false);
+                remember(true);
                 line.entered = true;
                 let symbols = inferSymbols(problem.problem, lines, index);
                 if (symbols !== null) line.symbols = symbols;
@@ -1010,6 +1026,8 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
         >
           <div
             mix={css({
+              position: "relative",
+              zIndex: "4",
               display: "flex",
               flexDirection: "row",
               alignItems: "center",
@@ -1034,6 +1052,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
           <div
             mix={css({
               position: "relative",
+              zIndex: "4",
               display: "flex",
               flexShrink: "0",
               flexDirection: "row",
@@ -1082,6 +1101,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                       example?.lines.find((line) => line.annotation === example.taken) ?? example?.lines[0];
                     let setup = example?.lines.filter((line) => line !== written) ?? [];
                     let open = helpOpenRules.has(rule.name);
+                    let shown = open ? (setup.length > 0 ? setup : written ? [written] : []) : [];
                     return (
                       <div key={rule.name}>
                         <button
@@ -1121,7 +1141,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                           <span mix={css({ flex: "1", minWidth: "0" })}>{written?.formula}</span>
                           {example ? <CiteSlots text={example.taken} /> : null}
                         </button>
-                        {open && setup.length > 0 ? (
+                        {shown.length > 0 ? (
                           <div
                             mix={css({
                               marginBottom: t.space.sm,
@@ -1130,7 +1150,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                               backgroundColor: t.surface.lvl1,
                             })}
                           >
-                            {setup.map((line) => (
+                            {shown.map((line) => (
                               <div
                                 key={line.number}
                                 mix={css({
@@ -1378,8 +1398,9 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
           <div
             mix={css({
               position: "fixed",
-              right: t.space.xl,
-              bottom: t.space.xl,
+              top: t.space.xl,
+              left: "50%",
+              transform: "translateX(-50%)",
               paddingInline: t.space.lg,
               paddingBlock: t.space.md,
               borderRadius: t.radius.md,
@@ -1396,3 +1417,4 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
     );
   };
 }
+

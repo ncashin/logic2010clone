@@ -380,8 +380,9 @@ export function RecognizingRules(handle: Handle<RecognizingRulesProps>) {
           <div
             mix={css({
               position: "fixed",
-              right: t.space.xl,
-              bottom: t.space.xl,
+              top: t.space.xl,
+              left: "50%",
+              transform: "translateX(-50%)",
               paddingInline: t.space.lg,
               paddingBlock: t.space.md,
               borderRadius: t.radius.md,

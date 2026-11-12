@@ -97,7 +97,14 @@ const stateColor: Record<ProblemStatus, string> = {
   correct: "#008000",
   incorrect: "#cc0000",
   "in-progress": "#ca8a04",
-  unattempted: "#111827",
+  unattempted: "#9ca3af",
+};
+
+const stateLabel: Record<ProblemStatus, string> = {
+  correct: "Correct",
+  incorrect: "Incorrect",
+  "in-progress": "Started",
+  unattempted: "",
 };
 
 export function ProblemList(handle: Handle<ProblemListProps>) {
@@ -333,7 +340,7 @@ export function ProblemList(handle: Handle<ProblemListProps>) {
                           border: "none",
                           textAlign: "left",
                           font: "inherit",
-                          color: stateColor[record.status],
+                          color: t.colors.text.primary,
                           backgroundColor: selected === key ? "#c5d8f0" : "transparent",
                           textDecoration: "none",
                           cursor: "pointer",
@@ -356,6 +363,17 @@ export function ProblemList(handle: Handle<ProblemListProps>) {
                           flexShrink: "0",
                         })}
                       >
+                        {stateLabel[record.status] ? (
+                          <span
+                            mix={css({
+                              color: stateColor[record.status],
+                              fontSize: t.fontSize.xs,
+                              fontWeight: t.fontWeight.semibold,
+                            })}
+                          >
+                            {stateLabel[record.status]}
+                          </span>
+                        ) : null}
                         {points != null ? (
                           <span
                             mix={css({
