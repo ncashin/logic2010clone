@@ -39,8 +39,8 @@ const resetAction = actionStyle("reset");
 const submitAction = actionStyle("submit");
 
 const rules = [
-  { name: "mp", symbols: "P  P→Q  ∴  Q", help: "From P and P→Q, get Q." },
-  { name: "mt", symbols: "~Q  P→Q  ∴  ~P", help: "From ~Q and P→Q, get ~P." },
+  { name: "mp", symbols: "P  P→Q  ∴  Q", help: "From P and P→Q, infer Q." },
+  { name: "mt", symbols: "~Q  P→Q  ∴  ~P", help: "From ~Q and P→Q, infer ~P." },
   { name: "dn", symbols: "~~P  ∴  P", help: "Add or cancel a double not on the whole line." },
   { name: "None", symbols: "", help: "No one of those rules gives the last line." },
 ];

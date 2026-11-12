@@ -1,0 +1,176 @@
+[
+  {
+    "name": "pr",
+    "command": "pr_",
+    "group": "Logical operations",
+    "does": "Write a premise from the problem. These are visible underneath the problem header",
+    "lines": [
+      { "number": "1", "formula": "(Q→P)", "annotation": "pr1", "depth": 0 }
+    ]
+  },
+  {
+    "name": "r",
+    "command": "_ r",
+    "group": "Logical operations",
+    "does": "Repeat a line from earlier in the derivation. This can be used to access earlier workings from a subderivation",
+    "lines": [
+      { "number": "1", "formula": "P", "annotation": "pr1", "depth": 0 },
+      { "number": "2", "formula": "P", "annotation": "1 r", "depth": 0 }
+    ]
+  },
+  {
+    "name": "mp",
+    "command": "_ _ mp",
+    "group": "Logical operations",
+    "does": "From P and P→Q, infer Q.",
+    "lines": [
+      { "number": "1", "formula": "R→S", "annotation": "pr1", "depth": 0 },
+      { "number": "2", "formula": "R", "annotation": "pr2", "depth": 0 },
+      { "number": "3", "formula": "S", "annotation": "1 2 mp", "depth": 0 }
+    ]
+  },
+  {
+    "name": "mt",
+    "command": "_ _ mt",
+    "group": "Logical operations",
+    "does": "From  ~Q.  and  P→Q.  infer  ~P.",
+    "lines": [
+      { "number": "1", "formula": "(~Q→S)→P", "annotation": "pr1", "depth": 0 },
+      { "number": "2", "formula": "~P", "annotation": "pr2", "depth": 0 },
+      { "number": "3", "formula": "~(~Q→S)", "annotation": "1 2 mt", "depth": 0 }
+    ]
+  },
+  {
+    "name": "dn",
+    "command": "_ dn",
+    "group": "Logical operations",
+    "does": "From  ~~P.  infer  P.  From  P.  infer  ~~P.",
+    "lines": [
+      { "number": "1", "formula": "~~R", "annotation": "pr1", "depth": 0 },
+      { "number": "2", "formula": "R", "annotation": "1 dn", "depth": 0 }
+    ]
+  },
+  {
+    "name": "ass cd",
+    "command": "ass cd",
+    "group": "Completing a derivation",
+    "does": "Assume the antecedent (left side of a conditional ->). This is required to later complete a derivation using cd.",
+    "lines": [
+      { "number": "1", "formula": "R→S", "annotation": "pr1", "depth": 0 },
+      { "number": "2", "formula": "Show ~Q→S", "annotation": "show conc", "depth": 0, "strike": true },
+      { "number": "3", "formula": "~Q", "annotation": "ass cd", "depth": 1 },
+      { "number": "4", "formula": "~R→Q", "annotation": "pr2", "depth": 1 },
+      { "number": "5", "formula": "~~R", "annotation": "3 4 mt", "depth": 1 },
+      { "number": "6", "formula": "R", "annotation": "5 dn", "depth": 1 },
+      { "number": "7", "formula": "S", "annotation": "1 6 mp", "depth": 1 },
+      { "number": "8", "formula": "", "annotation": "7 cd", "depth": 1, "closes": true }
+    ]
+  },
+  {
+    "name": "cd",
+    "command": "_ cd",
+    "group": "Completing a derivation",
+    "does": "Cite the consequent (right side of a conditional ->), in order to complete a derivation.",
+    "lines": [
+      { "number": "1", "formula": "R→S", "annotation": "pr1", "depth": 0 },
+      { "number": "2", "formula": "Show ~Q→S", "annotation": "show conc", "depth": 0, "strike": true },
+      { "number": "3", "formula": "~Q", "annotation": "ass cd", "depth": 1 },
+      { "number": "4", "formula": "~R→Q", "annotation": "pr2", "depth": 1 },
+      { "number": "5", "formula": "~~R", "annotation": "3 4 mt", "depth": 1 },
+      { "number": "6", "formula": "R", "annotation": "5 dn", "depth": 1 },
+      { "number": "7", "formula": "S", "annotation": "1 6 mp", "depth": 1 },
+      { "number": "8", "formula": "", "annotation": "7 cd", "depth": 1, "closes": true }
+    ]
+  },
+  {
+    "name": "ass id",
+    "command": "ass id",
+    "group": "Completing a derivation",
+    "does": "Assume the negation of the previous show line. This often allows pointing out logical contradiction.",
+    "lines": [
+      { "number": "1", "formula": "Show P", "annotation": "show conc", "depth": 0, "strike": true },
+      { "number": "2", "formula": "~P", "annotation": "ass id", "depth": 1 },
+      { "number": "3", "formula": "(~Q→S)→P", "annotation": "pr1", "depth": 1 },
+      { "number": "4", "formula": "~(~Q→S)", "annotation": "2 3 mt", "depth": 1 },
+      { "number": "5", "formula": "~Q→S", "annotation": "pr2", "depth": 1 },
+      { "number": "6", "formula": "", "annotation": "4 5 id", "depth": 1, "closes": true }
+    ]
+  },
+  {
+    "name": "id",
+    "command": "_ _ id",
+    "group": "Completing a derivation",
+    "does": "Cite a logical contradiction. Often a formula and its negation in order to complete a derivation.",
+    "lines": [
+      { "number": "1", "formula": "Show P", "annotation": "show conc", "depth": 0, "strike": true },
+      { "number": "2", "formula": "~P", "annotation": "ass id", "depth": 1 },
+      { "number": "3", "formula": "(~Q→S)→P", "annotation": "pr1", "depth": 1 },
+      { "number": "4", "formula": "~(~Q→S)", "annotation": "2 3 mt", "depth": 1 },
+      { "number": "5", "formula": "~Q→S", "annotation": "pr2", "depth": 1 },
+      { "number": "6", "formula": "", "annotation": "4 5 id", "depth": 1, "closes": true }
+    ]
+  },
+  {
+    "name": "dd",
+    "command": "_ dd",
+    "group": "Completing a derivation",
+    "does": "Cite a line containing the formula you set out to show, to complete a derivation",
+    "lines": [
+      { "number": "1", "formula": "P", "annotation": "pr1", "depth": 0 },
+      { "number": "2", "formula": "Show P", "annotation": "show conc", "depth": 0, "strike": true },
+      { "number": "3", "formula": "P", "annotation": "1 r", "depth": 1 },
+      { "number": "4", "formula": "", "annotation": "3 dd", "depth": 1, "closes": true }
+    ]
+  },
+  {
+    "name": "show conc",
+    "command": "show conc",
+    "group": "Begin a derivation",
+    "does": "Begin any derivation. Your goal is to show the conclusion follows from its premises.",
+    "lines": [
+      { "number": "1", "formula": "Show P", "annotation": "show conc", "depth": 0 }
+    ]
+  },
+  {
+    "name": "show cons",
+    "command": "show cons",
+    "group": "Begin a subderivation",
+    "does": "Start a subderivation of a conditional's consequent.",
+    "lines": [
+      { "number": "1", "formula": "P→Q", "annotation": "pr1", "depth": 0 },
+      { "number": "2", "formula": "Show Q", "annotation": "show cons", "depth": 0 }
+    ]
+  },
+  {
+    "name": "show ant",
+    "command": "show ant _",
+    "group": "Begin a subderivation",
+    "does": "Start a subderivation of a conditional's antecedent. Cite that conditional.",
+    "lines": [
+      { "number": "1", "formula": "P→Q", "annotation": "pr1", "depth": 0 },
+      { "number": "2", "formula": "Show P", "annotation": "show ant 1", "depth": 0 }
+    ]
+  },
+  {
+    "name": "show negcons",
+    "command": "show negcons _",
+    "group": "Begin a subderivation",
+    "does": "Start a subderivation to show the negation of a consequent.",
+    "lines": [
+      { "number": "1", "formula": "P→Q", "annotation": "pr1", "depth": 0 },
+      { "number": "2", "formula": "Show ~Q", "annotation": "show negcons 1", "depth": 0 }
+    ]
+  },
+  {
+    "name": "show unneg",
+    "command": "show unneg _",
+    "group": "Begin a subderivation",
+    "does": "Start a subderivation of to show the negation of a formula.",
+    "lines": [
+      { "number": "1", "formula": "(~Q→S)→P", "annotation": "pr1", "depth": 0 },
+      { "number": "2", "formula": "~P", "annotation": "pr2", "depth": 0 },
+      { "number": "3", "formula": "~(~Q→S)", "annotation": "1 2 mt", "depth": 0 },
+      { "number": "4", "formula": "Show ~Q→S", "annotation": "show unneg 3", "depth": 0 }
+    ]
+  }
+]
