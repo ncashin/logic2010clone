@@ -1201,45 +1201,57 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                     paddingBlock: t.space.sm,
                     backgroundColor: t.surface.lvl0,
                     boxShadow: t.shadow.md,
-                    fontSize: t.fontSize.md,
+                    fontSize: t.fontSize.sm,
                     lineHeight: t.lineHeight.normal,
                   })}
                 >
-                  {["Begin a derivation", "General terms", "Logical operations", "Completing a derivation", "Begin a subderivation"].map((group) => (
+                  {["General terms", "Begin a derivation", "Logical operations", "Completing a derivation", "Begin a subderivation"].map((group) => (
                     <div key={group}>
                       <div
                         mix={css({
-                          paddingBlock: t.space.sm,
-                          paddingInline: t.space.lg,
+                          margin: 0,
+                          paddingInline: t.space.md,
+                          paddingTop: t.space.lg,
+                          paddingBottom: t.space.sm,
                           color: t.colors.text.primary,
                           fontSize: t.fontSize.sm,
                           fontWeight: t.fontWeight.semibold,
-                          letterSpacing: "0.04em",
-                          textTransform: "uppercase",
+                          lineHeight: t.lineHeight.normal,
                         })}
                       >
                         {group}
                       </div>
                       {group === "General terms"
                         ? [
-                            ["condition", "P→Q. A formula made of an antecedent and a consequent."],
-                            ["antecedent", "The formula before the arrow. In P→Q, that is P."],
-                            ["consequent", "The formula after the arrow. In P→Q, that is Q."],
+                            ["conditional", "The arrow in P→Q."],
+                            ["antecedent", "P in P→Q, the part before the arrow."],
+                            ["consequent", "Q in P→Q, the part after the arrow."],
                           ].map(([term, meaning]) => (
                             <div
                               key={term}
                               mix={css({
-                                display: "flex",
-                                gap: t.space.sm,
-                                paddingBlock: t.space.sm,
-                                paddingInline: t.space.lg,
-                                paddingLeft: "3.25rem",
+                                display: "grid",
+                                gridTemplateColumns: "12rem minmax(0, 1fr)",
+                                alignItems: "start",
+                                columnGap: t.space.lg,
+                                paddingInline: t.space.md,
+                                paddingBlock: t.space.xs,
+                                color: t.colors.text.primary,
+                                fontSize: t.fontSize.sm,
+                                lineHeight: t.lineHeight.normal,
                               })}
                             >
-                              <span mix={css({ width: "11rem", flexShrink: "0", fontWeight: t.fontWeight.semibold })}>
+                              <span
+                                mix={css({
+                                  display: "flex",
+                                  alignItems: "flex-start",
+                                  gap: t.space.sm,
+                                })}
+                              >
+                                <span mix={css({ width: t.space.lg, flexShrink: "0" })} />
                                 {term}
                               </span>
-                              <span mix={css({ color: t.colors.text.secondary })}>{meaning}</span>
+                              <span mix={css({ color: "#111827" })}>{meaning}</span>
                             </div>
                           ))
                         : ruleHelp.filter((rule) => rule.group === group).map((rule) => {
@@ -1250,18 +1262,20 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                           type="button"
                           mix={[
                             css({
-                              display: "flex",
-                              alignItems: "baseline",
-                              gap: t.space.sm,
+                              display: "grid",
+                              gridTemplateColumns: "12rem minmax(0, 1fr)",
+                              alignItems: "start",
+                              columnGap: t.space.lg,
                               width: "100%",
                               margin: 0,
-                              paddingBlock: t.space.sm,
-                              paddingInline: t.space.lg,
+                              paddingInline: t.space.md,
+                              paddingBlock: t.space.xs,
                               border: "none",
-                              backgroundColor: open ? t.surface.lvl1 : "transparent",
-                              color: t.colors.text.primary,
+                              backgroundColor: "transparent",
+                              color: "#111827",
                               font: "inherit",
-                              fontSize: t.fontSize.md,
+                              fontSize: t.fontSize.sm,
+                              fontWeight: t.fontWeight.normal,
                               lineHeight: t.lineHeight.normal,
                               textAlign: "left",
                               cursor: "pointer",
@@ -1274,28 +1288,26 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                             }),
                           ]}
                         >
-                          <Icon
-                            icon={open ? ChevronDown : ChevronRight}
-                            mix={css({
-                              width: t.space.lg,
-                              height: t.space.lg,
-                              flexShrink: "0",
-                              alignSelf: "flex-start",
-                              marginTop: "0.15em",
-                              color: t.colors.text.secondary,
-                            })}
-                          />
                           <span
                             mix={css({
-                              width: "11rem",
-                              flexShrink: "0",
-                              fontWeight: t.fontWeight.semibold,
-                              whiteSpace: "pre-line",
+                              display: "flex",
+                              alignItems: "flex-start",
+                              gap: t.space.sm,
                             })}
                           >
+                            <Icon
+                              icon={open ? ChevronDown : ChevronRight}
+                              mix={css({
+                                width: t.space.lg,
+                                height: t.space.lg,
+                                flexShrink: "0",
+                                marginTop: "0.15em",
+                                color: t.colors.text.primary,
+                              })}
+                            />
                             {rule.command}
                           </span>
-                          <span mix={css({ color: t.colors.text.secondary })}>{rule.does}</span>
+                          <span mix={css({ color: "#111827" })}>{rule.does}</span>
                         </button>
                         {open ? <HelpSample lines={rule.lines} /> : null}
                       </div>

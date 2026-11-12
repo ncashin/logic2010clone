@@ -135,10 +135,10 @@
     "name": "show cons",
     "command": "show cons",
     "group": "Begin a subderivation",
-    "does": "Start a subderivation of a conditional's consequent.",
+    "does": "Inside a show of a conditional, start a subderivation of its consequent.",
     "lines": [
-      { "number": "1", "formula": "P→Q", "annotation": "pr1", "depth": 0 },
-      { "number": "2", "formula": "Show Q", "annotation": "show cons", "depth": 0 }
+      { "number": "1", "formula": "Show P→Q", "annotation": "show conc", "depth": 0 },
+      { "number": "2", "formula": "Show Q", "annotation": "show cons", "depth": 1 }
     ]
   },
   {
