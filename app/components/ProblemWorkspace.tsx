@@ -69,7 +69,7 @@ export function ProblemWorkspace(handle: Handle<ProblemWorkspaceProps>) {
   ) {
     let { problem } = handle.props;
     return writeProgress(problem.type, problem.number, {
-      status: status ?? (work.trim() ? "in-progress" : "unattempted"),
+      status: status ?? (work.trim() ? "correct" : "unattempted"),
       work,
       ...(submitted == null ? {} : { submitted }),
     });

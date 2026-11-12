@@ -111,8 +111,10 @@ export function RecognizingRules(handle: Handle<RecognizingRulesProps>) {
     submitted?: boolean,
   ) {
     let { problem } = handle.props;
+    let given = normalize(answer);
+    let correct = given !== "" && given === recognizeRule(problem.problem);
     return writeProgress(problem.type, problem.number, {
-      status: status ?? (answer.trim() ? "in-progress" : "unattempted"),
+      status: status ?? (correct ? "correct" : answer.trim() ? "in-progress" : "unattempted"),
       work: answer,
       ...(submitted == null ? {} : { submitted }),
     });

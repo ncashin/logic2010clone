@@ -24,6 +24,7 @@ import {
   simpleAnnotations,
   formatFormula,
   inferSymbols,
+  omitsFormula,
   parseArgument,
 } from "#app/logic/derivation.ts";
 import { sectionPadding } from "#app/components/Welcome.tsx";
@@ -69,6 +70,10 @@ const lineField = css({
   fontWeight: t.fontWeight.normal,
   lineHeight: t.lineHeight.normal,
   "&::placeholder": {
+    color: t.colors.text.muted,
+    opacity: 1,
+  },
+  "&:focus::placeholder": {
     color: t.colors.text.muted,
     opacity: 1,
   },
@@ -292,6 +297,8 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
   let collapsed = new Set<number>();
   let hoverLine: number | null = null;
   let citeHover: number | null = null;
+  let editingLine: number | null = null;
+  let citeTimer: ReturnType<typeof setTimeout> | null = null;
   let dirty = false;
   let helpOpen = false;
   let helpOpenRules = new Set<string>();
@@ -306,6 +313,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
     void restore(handle.props.problem);
   });
   handle.signal.addEventListener("abort", () => {
+    if (citeTimer) clearTimeout(citeTimer);
     if (dirty) void persist();
   });
 
@@ -342,8 +350,9 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
     submission?: string,
   ) {
     let { problem } = handle.props;
+    let complete = checkDerivation(problem.problem, lines).complete;
     return writeProgress(problem.type, problem.number, {
-      status: status ?? (hasWork(lines) ? "in-progress" : "unattempted"),
+      status: status ?? (complete ? "correct" : hasWork(lines) ? "in-progress" : "unattempted"),
       work: JSON.stringify(lines),
       ...(submitted == null ? {} : { submitted }),
       ...(submission == null ? {} : { submission }),
@@ -416,6 +425,9 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
       collapsed = new Set();
       hoverLine = null;
       citeHover = null;
+      editingLine = null;
+      if (citeTimer) clearTimeout(citeTimer);
+      citeTimer = null;
       dirty = false;
       past = [];
       future = [];
@@ -496,19 +508,56 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
     let activeResult = result;
     let readOnly = false;
 
+    function armCiteHover(index: number) {
+      if (citeTimer) clearTimeout(citeTimer);
+      if (editingLine != null) {
+        citeTimer = null;
+        return;
+      }
+      citeTimer = setTimeout(() => {
+        citeTimer = null;
+        if (hoverLine !== index || editingLine === index) return;
+        citeHover = index;
+        handle.update();
+      }, 600);
+    }
+
     function watchLine(index: number) {
       return [
         on("mouseenter", () => {
           hoverLine = index;
+          if (citeHover !== index) citeHover = null;
+          armCiteHover(index);
           handle.update();
         }),
         on("mouseleave", (event) => {
           let next = event.relatedTarget;
           if (next instanceof Element && next.closest(`[data-line="${index}"]`)) return;
           if (hoverLine === index) hoverLine = null;
+          if (citeHover === index) citeHover = null;
+          if (citeTimer) clearTimeout(citeTimer);
+          citeTimer = null;
           handle.update();
         }),
       ];
+    }
+
+    function beginEdit(index: number) {
+      editingLine = index;
+      citeHover = null;
+      if (citeTimer) clearTimeout(citeTimer);
+      citeTimer = null;
+      typing = false;
+      handle.update();
+    }
+
+    function endEdit(index: number) {
+      queueMicrotask(() => {
+        if (document.activeElement?.closest(`[data-line="${index}"]`)) return;
+        if (editingLine === index) editingLine = null;
+        if (hoverLine != null) armCiteHover(hoverLine);
+        handle.update();
+      });
     }
 
     function shiftCollapsed(from: number, delta: number) {
@@ -553,23 +602,31 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
     }
 
     function citedByHover(index: number) {
-      if (citeHover == null || citeHover === index) return false;
+      if (editingLine != null || citeHover == null || citeHover === index) return false;
       return annotationCites(active[citeHover]?.annotation ?? "").includes(index + 1);
     }
 
     function citedPremise() {
-      if (citeHover == null) return null;
+      if (editingLine != null || citeHover == null) return null;
       let match = /^\s*pr\s*(\d+)\s*$/i.exec(active[citeHover]?.annotation ?? "");
       return match?.[1] ? Number(match[1]) : null;
     }
 
     function renderRow(index: number, line: DerivationLine, rowNumber: number) {
       let checked = activeResult.lines[index];
-      let showCaret = checked?.boxed != null && hoverLine === index;
+      let lineHover = editingLine == null || editingLine === index ? hoverLine : null;
+      let showCaret = checked?.boxed != null && lineHover === index;
       let cited = citedByHover(index);
-      let citedMark = cited ? { backgroundColor: "#e4eef8" } : {};
       let placed = `${rowNumber}`;
-      let band = hoverLine === index ? "#e4eef8" : rowNumber % 2 === 0 ? t.surface.lvl2 : t.surface.lvl0;
+      let band = cited
+        ? "#f8efe0"
+        : lineHover === index
+          ? rowNumber % 2 === 0
+            ? "#f7f8f9"
+            : "#fbfcfd"
+          : rowNumber % 2 === 0
+            ? t.surface.lvl1
+            : t.surface.lvl0;
       return (
         <div key={index} mix={css({ display: "contents" })}>
           <div
@@ -662,17 +719,17 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                   alignItems: "center",
                   width: "100%",
                   minWidth: "0",
-                  ...citedMark,
                 })}
               >
-                {crossed && showText ? (
+                {showText ? (
                   <span
                     mix={css({
                       paddingLeft: t.space.sm,
                       color: t.colors.text.primary,
                       fontSize: t.fontSize.md,
+                      fontWeight: t.fontWeight.bold,
                       lineHeight: t.lineHeight.normal,
-                      textDecoration: "line-through",
+                      textDecoration: crossed ? "line-through" : "none",
                     })}
                   >
                     {showText[1]}
@@ -686,27 +743,42 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                       minWidth: "0",
                       flex: "1",
                       paddingBlock: t.space.sm,
-                      paddingLeft: crossed ? "0px" : t.space.sm,
+                      paddingLeft: showText ? "0px" : t.space.sm,
+                      fontWeight: t.fontWeight.normal,
                       backgroundColor: "transparent",
                     }),
                     ...watchLine(index),
                     on("focus", () => {
-                      typing = false;
+                      beginEdit(index);
+                    }),
+                    on("blur", () => {
+                      endEdit(index);
+                    }),
+                    on("keydown", (event) => {
+                      if (!showText || readOnly || event.key !== "Backspace") return;
+                      let field = event.currentTarget;
+                      if (field.selectionStart !== 0 || field.selectionEnd !== 0) return;
+                      remember(true);
+                      line.symbols = showText[2] ?? "";
+                      revealErrors = false;
+                      saveChange();
+                      event.preventDefault();
                     }),
                     on("input", (event) => {
                       if (readOnly) return;
                       remember(true);
                       let typed = event.currentTarget.value;
-                      line.symbols = crossed && showText ? `${showText[1]}${typed}` : typed;
+                      line.symbols = showText ? `${showText[1]}${typed}` : typed;
                       revealErrors = false;
                       saveChange();
                     }),
                   ]}
+                  aria-label="Formula"
                   data-line={index}
-                  placeholder="Formula"
+                  placeholder={omitsFormula(line) ? "" : "Formula"}
                   readOnly={readOnly}
                   type="text"
-                  value={crossed && showText ? showText[2] : line.symbols}
+                  value={showText ? showText[2] : line.symbols}
                 />
               </div>
             );
@@ -757,16 +829,11 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                 color: checked?.error ? t.colors.text.warning : t.colors.text.primary,
               }),
               ...watchLine(index),
-              on("mouseenter", () => {
-                citeHover = index;
-                handle.update();
-              }),
-              on("mouseleave", () => {
-                if (citeHover === index) citeHover = null;
-                handle.update();
-              }),
               on("focus", () => {
-                typing = false;
+                beginEdit(index);
+              }),
+              on("blur", () => {
+                endEdit(index);
               }),
               on("input", (event) => {
                 if (readOnly) return;
@@ -788,6 +855,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                 saveChange();
               }),
             ]}
+            aria-label="Annotation"
             data-annotation={index}
             data-line={index}
             placeholder="Annotation"
@@ -809,6 +877,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                   gap: t.space.xs,
                   marginLeft: `calc(${t.space.md} * -1)`,
                   paddingLeft: t.space.md,
+                  paddingRight: t.space.md,
                   opacity: hoverLine === index ? "1" : "0",
                 }),
                 ...watchLine(index),
@@ -944,8 +1013,37 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
     }
 
     function renderTree() {
-      let nodes = [];
-      let rowNumber = 1;
+      let nodes = [
+        <span
+          key="formula-header"
+          mix={css({
+            gridColumn: "2",
+            gridRow: "1",
+            paddingLeft: t.space.sm,
+            paddingBottom: t.space.xs,
+            color: t.colors.text.muted,
+            fontSize: t.fontSize.sm,
+            lineHeight: t.lineHeight.normal,
+          })}
+        >
+          Formula
+        </span>,
+        <span
+          key="annotation-header"
+          mix={css({
+            gridColumn: "3",
+            gridRow: "1",
+            paddingInline: t.space.sm,
+            paddingBottom: t.space.xs,
+            color: t.colors.text.muted,
+            fontSize: t.fontSize.sm,
+            lineHeight: t.lineHeight.normal,
+          })}
+        >
+          Annotation
+        </span>,
+      ];
+      let rowNumber = 2;
       for (let index = 0; index < active.length; index += 1) {
         let line = active[index];
         if (!line || hidden(index)) continue;
@@ -1236,6 +1334,9 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                   collapsed = new Set();
                   hoverLine = null;
                   citeHover = null;
+                  editingLine = null;
+                  if (citeTimer) clearTimeout(citeTimer);
+                  citeTimer = null;
                   revealErrors = false;
                   notice = "";
                   saveChange("unattempted");
@@ -1333,7 +1434,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                 >
                   <span
                     mix={css({
-                      backgroundColor: citedPremise() === index + 1 ? "#e4eef8" : "transparent",
+                      backgroundColor: citedPremise() === index + 1 ? "#f8efe0" : "transparent",
                     })}
                   >
                     {premise}.

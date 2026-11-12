@@ -421,6 +421,13 @@ function isCloser(line: DerivationLine): boolean {
   return annotation.kind === "rule" && BOX_RULES.has(annotation.rule);
 }
 
+/** A finished CD, ID, or DD line has no formula of its own. */
+export function omitsFormula(line: DerivationLine): boolean {
+  if (!line.entered || formulaText(line.symbols) !== "") return false;
+  let annotation = parseAnnotation(line.annotation);
+  return annotation.kind === "rule" && BOX_RULES.has(annotation.rule);
+}
+
 export function inferSymbols(problem: string, lines: DerivationLine[], index: number): string | null {
   let annotation = parseAnnotation(lines[index]?.annotation ?? "");
   let written = writtenFormula(problem, lines, index);
