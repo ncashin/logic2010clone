@@ -126,7 +126,7 @@
     "name": "show conc",
     "command": "show conc",
     "group": "Begin a derivation",
-    "does": "Begin any derivation. Your goal is to show the conclusion follows from its premises.",
+    "does": "Begin any derivation. Your goal is to show the conclusion follows from the premises.",
     "lines": [
       { "number": "1", "formula": "Show P", "annotation": "show conc", "depth": 0 }
     ]

@@ -2,7 +2,7 @@ import { css } from "pitlane/theme";
 import { type Handle, on } from "remix/component";
 
 import { assignmentProblemList } from "#app/data/assignments.ts";
-import { problems, type ProblemStatus } from "#app/data/problems.ts";
+import { problems, type Problem, type ProblemStatus } from "#app/data/problems.ts";
 import { listProgress, progressFor, watchProgress } from "#app/data/progress.ts";
 import { routes } from "#app/routes.ts";
 import { t } from "#app/theme.ts";
@@ -13,23 +13,33 @@ export const sectionPadding = {
   paddingBottom: t.space.xl,
 } as const;
 
-const statusColor: Record<ProblemStatus, string> = {
+type CompletionStatus = Exclude<ProblemStatus, "incorrect">;
+
+const statusColor: Record<CompletionStatus, string> = {
   correct: "#008000",
-  incorrect: "#cc0000",
   "in-progress": "#ca8a04",
   unattempted: "#d1d5db",
 };
 
-const statusLabel: Record<ProblemStatus, string> = {
+const statusLabel: Record<CompletionStatus, string> = {
   correct: "Correct",
-  incorrect: "Incorrect",
   "in-progress": "In progress",
   unattempted: "Not started",
 };
 
+const completionOrder: CompletionStatus[] = ["correct", "in-progress", "unattempted"];
+
+function chapterOf(problem: Problem) {
+  return problem.number.split(".")[0] ?? problem.number;
+}
+
+function emptyCounts(): Record<CompletionStatus, number> {
+  return { correct: 0, "in-progress": 0, unattempted: 0 };
+}
+
 const course = [
   ["Section:", "PHIL 2030-001"],
-  ["Meets:", "Monday and Wednesday, 11:00-12:15"],
+  ["Class time:", "Monday and Wednesday, 11:00-12:15"],
   ["Room:", "Science 214"],
   ["Office hours:", "Tuesday, 2:00-4:00, Arts 118"],
 ] as const;
@@ -86,12 +96,7 @@ function assignmentHref(slug: string) {
 }
 
 export function Welcome(handle: Handle) {
-  let counts: Record<ProblemStatus, number> = {
-    correct: 0,
-    incorrect: 0,
-    "in-progress": 0,
-    unattempted: problems.length,
-  };
+  let byChapter: { chapter: string; counts: Record<CompletionStatus, number> }[] = [];
   let view = new Date(2026, 10, 1);
   let selected = new Date(2026, 10, 6);
 
@@ -104,20 +109,21 @@ export function Welcome(handle: Handle) {
 
   async function refresh() {
     let progress = await listProgress();
-    let next: Record<ProblemStatus, number> = {
-      correct: 0,
-      incorrect: 0,
-      "in-progress": 0,
-      unattempted: 0,
-    };
-    for (let problem of problems) next[progressFor(progress, problem).status] += 1;
-    counts = next;
+    let grouped = new Map<string, Record<CompletionStatus, number>>();
+    for (let problem of problems) {
+      let chapter = chapterOf(problem);
+      let counts = grouped.get(chapter) ?? emptyCounts();
+      let status = progressFor(progress, problem).status;
+      counts[status === "incorrect" ? "unattempted" : status] += 1;
+      grouped.set(chapter, counts);
+    }
+    byChapter = [...grouped.entries()]
+      .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
+      .map(([chapter, counts]) => ({ chapter, counts }));
     handle.update();
   }
 
   return () => {
-    let total = problems.length;
-    let order: ProblemStatus[] = ["correct", "incorrect", "in-progress", "unattempted"];
     let today = new Date();
     let year = view.getFullYear();
     let month = view.getMonth();
@@ -217,6 +223,10 @@ export function Welcome(handle: Handle) {
             <section>
               <h2 mix={headingStyle()}>Course Info</h2>
               {facts(course)}
+            </section>
+            <section>
+              <h2 mix={headingStyle()}>Student Info</h2>
+              {facts(student)}
             </section>
           </div>
           <div
@@ -390,73 +400,93 @@ export function Welcome(handle: Handle) {
                 </a>
               ) : null}
             </div>
-            <p
-              mix={css({
-                margin: 0,
-                fontSize: t.fontSize.sm,
-                color: t.colors.text.secondary,
-              })}
-            >
-              {counts.correct} of {total} problems completed
-            </p>
             <div
               mix={css({
                 display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-end",
+                gap: t.space.md,
                 width: "min(100%, 28rem)",
-                height: t.space.lg,
-                borderRadius: t.radius.none,
-                overflow: "hidden",
-                background: statusColor.unattempted,
               })}
             >
-              {order.map((status) =>
-                counts[status] === 0 ? null : (
+              {byChapter.slice(0, 3).map(({ chapter, counts }) => {
+                let total = completionOrder.reduce((sum, status) => sum + counts[status], 0);
+                return (
                   <div
-                    key={status}
+                    key={chapter}
                     mix={css({
-                      width: `${(counts[status] / total) * 100}%`,
-                      background: statusColor[status],
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "flex-end",
+                      gap: t.space.xs,
+                      width: "100%",
                     })}
-                    title={`${statusLabel[status]}: ${counts[status]}`}
-                  />
-                ),
-              )}
-            </div>
-            <ul
-              mix={css({
-                display: "flex",
-                flexWrap: "wrap",
-                justifyContent: "flex-end",
-                gap: t.space.lg,
-                margin: 0,
-                padding: 0,
-                listStyle: "none",
-                fontSize: t.fontSize.sm,
-                color: t.colors.text.secondary,
+                  >
+                    <p
+                      mix={css({
+                        margin: 0,
+                        fontSize: t.fontSize.sm,
+                        color: t.colors.text.secondary,
+                      })}
+                    >
+                      Chapter {chapter}: {counts.correct} of {total} problems completed
+                    </p>
+                    <div
+                      mix={css({
+                        display: "flex",
+                        width: "100%",
+                        height: t.space.lg,
+                        borderRadius: t.radius.none,
+                        overflow: "hidden",
+                        background: statusColor.unattempted,
+                      })}
+                    >
+                      {completionOrder.map((status) =>
+                        counts[status] === 0 || total === 0 ? null : (
+                          <div
+                            key={status}
+                            mix={css({
+                              width: `${(counts[status] / total) * 100}%`,
+                              background: statusColor[status],
+                            })}
+                            title={`${statusLabel[status]}: ${counts[status]}`}
+                          />
+                        ),
+                      )}
+                    </div>
+                  </div>
+                );
               })}
-            >
-              {order.map((status) => (
-                <li key={status} mix={css({ display: "flex", alignItems: "center", gap: t.space.sm })}>
-                  <span
-                    mix={css({
-                      width: t.space.md,
-                      height: t.space.md,
-                      borderRadius: t.radius.full,
-                      background: statusColor[status],
-                    })}
-                  />
-                  {statusLabel[status]} {counts[status]}
-                </li>
-              ))}
-            </ul>
+              <ul
+                mix={css({
+                  display: "flex",
+                  flexWrap: "wrap",
+                  justifyContent: "flex-end",
+                  gap: t.space.lg,
+                  margin: 0,
+                  padding: 0,
+                  listStyle: "none",
+                  fontSize: t.fontSize.sm,
+                  color: t.colors.text.secondary,
+                })}
+              >
+                {completionOrder.map((status) => (
+                  <li key={status} mix={css({ display: "flex", alignItems: "center", gap: t.space.sm })}>
+                    <span
+                      mix={css({
+                        width: t.space.md,
+                        height: t.space.md,
+                        borderRadius: t.radius.full,
+                        background: statusColor[status],
+                      })}
+                    />
+                    {statusLabel[status]}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
-
-        <section mix={css({ marginTop: "auto" })}>
-          <h2 mix={headingStyle()}>Student Info</h2>
-          {facts(student)}
-        </section>
-
       </main>
     );
   };

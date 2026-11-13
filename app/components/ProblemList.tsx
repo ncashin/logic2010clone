@@ -112,6 +112,9 @@ export function ProblemList(handle: Handle<ProblemListProps>) {
   let selectionNonce = handle.props.selectionNonce;
   let query = "";
   let progress: ProgressMap = new Map();
+  let hoverLabel = "";
+  let hoverX = 0;
+  let hoverY = 0;
 
   handle.queueTask(() => {
     void refresh();
@@ -358,7 +361,7 @@ export function ProblemList(handle: Handle<ProblemListProps>) {
                           display: "flex",
                           flexDirection: "row",
                           alignItems: "center",
-                          gap: t.space.sm,
+                          gap: t.space.lg,
                           marginLeft: "auto",
                           flexShrink: "0",
                         })}
@@ -385,15 +388,34 @@ export function ProblemList(handle: Handle<ProblemListProps>) {
                           </span>
                         ) : null}
                         {onAssignment ? (
-                          <Icon
-                            icon={record.submitted ? CircleCheck : Circle}
-                            mix={css({
-                              width: t.fontSize.xl,
-                              height: t.fontSize.xl,
-                              flexShrink: "0",
-                              color: record.submitted ? stateColor.correct : t.colors.text.muted,
-                            })}
-                          />
+                          <span
+                            mix={[
+                              on("pointerenter", (event) => {
+                                let box = event.currentTarget.getBoundingClientRect();
+                                let name = problemLabel(problem, handle.props.label ?? "statement");
+                                hoverLabel = record.submitted ? `${name} submitted` : `${name} not submitted`;
+                                hoverX = box.left + box.width / 2;
+                                hoverY = box.top;
+                                handle.update();
+                              }),
+                              on("pointerleave", () => {
+                                hoverLabel = "";
+                                handle.update();
+                              }),
+                              css({ display: "inline-flex" }),
+                            ]}
+                          >
+                            <Icon
+                              icon={record.submitted ? CircleCheck : Circle}
+                              mix={css({
+                                width: t.fontSize.xl,
+                                height: t.fontSize.xl,
+                                flexShrink: "0",
+                                pointerEvents: "auto",
+                                color: record.submitted ? stateColor.correct : t.colors.text.muted,
+                              })}
+                            />
+                          </span>
                         ) : null}
                       </span>
                     </a>
@@ -406,6 +428,29 @@ export function ProblemList(handle: Handle<ProblemListProps>) {
           </section>
         ))}
       </div>
+      {hoverLabel ? (
+        <span
+          mix={css({
+            position: "fixed",
+            left: `${hoverX}px`,
+            top: `${hoverY}px`,
+            transform: "translate(-50%, calc(-100% - 6px))",
+            zIndex: "30",
+            paddingInline: t.space.sm,
+            paddingBlock: "2px",
+            borderRadius: t.radius.sm,
+            backgroundColor: t.colors.text.primary,
+            color: "#ffffff",
+            fontSize: t.fontSize.xs,
+            fontWeight: t.fontWeight.normal,
+            lineHeight: t.lineHeight.tight,
+            whiteSpace: "nowrap",
+            pointerEvents: "none",
+          })}
+        >
+          {hoverLabel}
+        </span>
+      ) : null}
       </div>
     );
   };

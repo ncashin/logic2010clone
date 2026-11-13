@@ -77,14 +77,42 @@ export function RecognizingRules(handle: Handle<RecognizingRulesProps>) {
   let loaded = "";
   let answer = "";
   let notice = "";
+  let noticeTone: "success" | "neutral" = "neutral";
   let dirty = false;
   let helpOpen = false;
   let submitted = false;
+  let noticeFade = false;
+  let noticeTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function hideNotice() {
+    if (noticeTimer) clearTimeout(noticeTimer);
+    noticeTimer = null;
+    notice = "";
+    noticeFade = false;
+  }
+
+  function showNotice(message: string, tone: "success" | "neutral") {
+    if (noticeTimer) clearTimeout(noticeTimer);
+    notice = message;
+    noticeTone = tone;
+    noticeFade = false;
+    noticeTimer = setTimeout(() => {
+      noticeFade = true;
+      handle.update();
+      noticeTimer = setTimeout(() => {
+        notice = "";
+        noticeFade = false;
+        noticeTimer = null;
+        handle.update();
+      }, 500);
+    }, 2200);
+  }
 
   handle.queueTask(() => {
     void restore(handle.props.problem);
   });
   handle.signal.addEventListener("abort", () => {
+    if (noticeTimer) clearTimeout(noticeTimer);
     if (dirty) void persist();
   });
 
@@ -138,7 +166,7 @@ export function RecognizingRules(handle: Handle<RecognizingRulesProps>) {
       let saved = peekProgress(problem.type, problem.number);
       loaded = key;
       answer = saved?.work ?? "";
-      notice = "";
+      hideNotice();
       dirty = false;
       helpOpen = false;
       submitted = saved?.submitted ?? false;
@@ -190,6 +218,7 @@ export function RecognizingRules(handle: Handle<RecognizingRulesProps>) {
           <div
             mix={css({
               position: "relative",
+              zIndex: "4",
               display: "flex",
               flexShrink: "0",
               flexDirection: "row",
@@ -247,20 +276,17 @@ export function RecognizingRules(handle: Handle<RecognizingRulesProps>) {
                 </div>
               ) : null}
             </div>
-            <button type="button" mix={[action]}>
-              Feedback
-            </button>
             <button
               type="button"
               mix={[
                 action,
                 on("click", () => {
                   if (typeof expected !== "string" || !["mp", "mt", "dn", "none"].includes(expected)) {
-                    notice = expected;
+                    showNotice(expected, "neutral");
                     handle.update();
                     return;
                   }
-                  notice = correct ? "Checked: correct." : "Checked: incorrect.";
+                  showNotice(correct ? "Logic is correct" : "Logic is incorrect", correct ? "success" : "neutral");
                   saveChange(correct ? "correct" : "incorrect");
                 }),
               ]}
@@ -274,7 +300,7 @@ export function RecognizingRules(handle: Handle<RecognizingRulesProps>) {
                 resetAction,
                 on("click", () => {
                   answer = "";
-                  notice = "";
+                  hideNotice();
                   submitted = false;
                   saveChange("unattempted", false);
                 }),
@@ -289,11 +315,11 @@ export function RecognizingRules(handle: Handle<RecognizingRulesProps>) {
                   submitAction,
                   on("click", () => {
                     if (!correct) {
-                      notice = "Submit needs the right rule.";
+                      showNotice("Submit needs the right rule.", "neutral");
                       handle.update();
                       return;
                     }
-                    notice = submitted ? "Resubmitted." : "Submitted.";
+                    showNotice("Submission Successful!", "success");
                     submitted = true;
                     saveChange("correct", true);
                   }),
@@ -349,7 +375,7 @@ export function RecognizingRules(handle: Handle<RecognizingRulesProps>) {
                 mix={[
                   on("input", (event) => {
                     answer = event.currentTarget.value;
-                    notice = "";
+                    hideNotice();
                     saveChange();
                   }),
                   css({
@@ -382,15 +408,20 @@ export function RecognizingRules(handle: Handle<RecognizingRulesProps>) {
           <div
             mix={css({
               position: "fixed",
-              top: t.space.xl,
+              zIndex: "50",
+              top: t.space.md,
               left: "50%",
               transform: "translateX(-50%)",
+              opacity: noticeFade ? "0" : "1",
+              transition: "opacity 500ms ease",
               paddingInline: t.space.lg,
               paddingBlock: t.space.md,
               borderRadius: t.radius.md,
-              backgroundColor: t.colors.text.primary,
-              color: t.surface.lvl0,
+              backgroundColor: noticeTone === "success" ? "#16a34a" : t.colors.text.primary,
+              color: noticeTone === "success" ? "#ffffff" : t.surface.lvl0,
               fontSize: t.fontSize.sm,
+              lineHeight: t.lineHeight.normal,
+              whiteSpace: "nowrap",
               boxShadow: t.shadow.md,
             })}
           >

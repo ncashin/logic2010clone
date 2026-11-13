@@ -1,16 +1,17 @@
 import {
   ArrowLeft,
   Ban,
+  BookOpen,
   Braces,
   Circle,
   CircleCheck,
-  CircleHelp,
   Clipboard,
   ExternalLink,
   FileText,
   GitBranch,
   Library,
   ListChecks,
+  LogOut,
   MessageSquare,
   Notebook,
   NotebookPen,
@@ -19,7 +20,7 @@ import {
   Variable,
 } from "lucide";
 import { css } from "pitlane/theme";
-import { Frame, type Handle, on } from "remix/component";
+import { Frame, type Handle, navigate, on } from "remix/component";
 
 import type { GuestBookEntry } from "#app/data/schemas.ts";
 
@@ -28,6 +29,7 @@ import { ProblemList } from "#app/components/ProblemList.tsx";
 import { assignmentProblemList } from "#app/data/assignments.ts";
 import { problemId, problemsForType } from "#app/data/problems.ts";
 import { listProgress, progressFor, type ProgressMap, watchProgress } from "#app/data/progress.ts";
+import { signOut } from "#app/data/session.ts";
 import { routes } from "#app/routes.ts";
 import { t } from "#app/theme.ts";
 
@@ -104,6 +106,9 @@ export function Sidebar(handle: Handle<SidebarProps>) {
       })();
   let selectionNonce = 0;
   let progress: ProgressMap = new Map();
+  let hoverLabel = "";
+  let hoverX = 0;
+  let hoverY = 0;
 
   handle.queueTask(() => {
     void refreshProgress();
@@ -521,15 +526,35 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                       })}
                     >
                       {assignment.due}
-                      <Icon
-                        icon={score.done ? CircleCheck : Circle}
-                        mix={css({
-                          width: t.fontSize.xl,
-                          height: t.fontSize.xl,
-                          flexShrink: "0",
-                          color: score.done ? "#008000" : t.colors.text.muted,
-                        })}
-                      />
+                      <span
+                        mix={[
+                          on("pointerenter", (event) => {
+                            let box = event.currentTarget.getBoundingClientRect();
+                            hoverLabel = score.done
+                              ? `${assignment.name} submitted`
+                              : `${assignment.name} not submitted`;
+                            hoverX = box.left + box.width / 2;
+                            hoverY = box.top;
+                            handle.update();
+                          }),
+                          on("pointerleave", () => {
+                            hoverLabel = "";
+                            handle.update();
+                          }),
+                          css({ display: "inline-flex" }),
+                        ]}
+                      >
+                        <Icon
+                          icon={score.done ? CircleCheck : Circle}
+                          mix={css({
+                            width: t.fontSize.xl,
+                            height: t.fontSize.xl,
+                            flexShrink: "0",
+                            pointerEvents: "auto",
+                            color: score.done ? "#008000" : t.colors.text.muted,
+                          })}
+                        />
+                      </span>
                     </span>
                   </a>
                 );
@@ -572,8 +597,11 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                 <Icon icon={MessageSquare} mix={css({ width: t.space.xl, height: t.space.xl })} />
                 Feedback
               </button>
-              <button
-                type="button"
+              <a
+                href="https://logiclx.humnet.ucla.edu/Logic/Documents/CORE/Text0.pdf"
+                target="_blank"
+                rel="noreferrer"
+                title="An Exposition of Symbolic Logic by Terence Parsons"
                 mix={[
                   css({
                     display: "flex",
@@ -583,19 +611,17 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                     width: t.size.full,
                     paddingInline: t.space.md,
                     paddingBlock: t.space.xs,
-                    border: "none",
-                    font: "inherit",
-                    textAlign: "left",
                     color: t.colors.choice.ink,
                     backgroundColor: "transparent",
+                    textDecoration: "none",
                     cursor: "pointer",
                     "&:hover": { backgroundColor: "#e4eef8" },
                   }),
                 ]}
               >
-                <Icon icon={CircleHelp} mix={css({ width: t.space.xl, height: t.space.xl })} />
-                Help
-              </button>
+                <Icon icon={BookOpen} mix={css({ width: t.space.xl, height: t.space.xl })} />
+                Course Text
+              </a>
               <a
                 href="https://online.mun.ca/d2l/home/677996"
                 target="_blank"
@@ -620,6 +646,48 @@ export function Sidebar(handle: Handle<SidebarProps>) {
                 <Icon icon={ExternalLink} mix={css({ width: t.space.xl, height: t.space.xl })} />
                 Course Website
               </a>
+              <h2
+                mix={[
+                  css({
+                    margin: 0,
+                    marginTop: t.space.lg,
+                    paddingInline: t.space.md,
+                    paddingBlock: t.space.xs,
+                    fontSize: t.fontSize.sm,
+                    fontWeight: t.fontWeight.semibold,
+                  }),
+                ]}
+              >
+                Account
+              </h2>
+              <button
+                type="button"
+                mix={[
+                  on("click", () => {
+                    signOut();
+                    navigate(routes.login.index.href());
+                  }),
+                  css({
+                    display: "flex",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: t.space.sm,
+                    width: t.size.full,
+                    paddingInline: t.space.md,
+                    paddingBlock: t.space.xs,
+                    border: "none",
+                    font: "inherit",
+                    textAlign: "left",
+                    color: t.colors.choice.ink,
+                    backgroundColor: "transparent",
+                    cursor: "pointer",
+                    "&:hover": { backgroundColor: "#e4eef8" },
+                  }),
+                ]}
+              >
+                <Icon icon={LogOut} mix={css({ width: t.space.xl, height: t.space.xl })} />
+                Sign out
+              </button>
             </div>
             </div>
             <div
@@ -712,6 +780,29 @@ export function Sidebar(handle: Handle<SidebarProps>) {
             })()}
           />
         </main>
+        {hoverLabel ? (
+          <span
+            mix={css({
+              position: "fixed",
+              left: `${hoverX}px`,
+              top: `${hoverY}px`,
+              transform: "translate(-50%, calc(-100% - 6px))",
+              zIndex: "30",
+              paddingInline: t.space.sm,
+              paddingBlock: "2px",
+              borderRadius: t.radius.sm,
+              backgroundColor: t.colors.text.primary,
+              color: "#ffffff",
+              fontSize: t.fontSize.xs,
+              fontWeight: t.fontWeight.normal,
+              lineHeight: t.lineHeight.tight,
+              whiteSpace: "nowrap",
+              pointerEvents: "none",
+            })}
+          >
+            {hoverLabel}
+          </span>
+        ) : null}
       </div>
     );
   };

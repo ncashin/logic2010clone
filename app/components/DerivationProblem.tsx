@@ -2,8 +2,6 @@ import {
   ArrowDownToLine,
   ArrowUpToLine,
   Check,
-  ChevronDown,
-  ChevronRight,
   CircleAlert,
   Ellipsis,
   Redo2,
@@ -11,7 +9,7 @@ import {
   Undo2,
 } from "lucide";
 import { css } from "pitlane/theme";
-import { type Handle, on } from "remix/component";
+import { type Handle, on, ref } from "remix/component";
 
 import { problemOnAssignment } from "#app/data/assignments.ts";
 import { problemStatement, type Problem } from "#app/data/problems.ts";
@@ -304,7 +302,11 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
   let loaded = "";
   let lines: DerivationLine[] = [];
   let notice = "";
+  let noticeTone: "success" | "partial" | "neutral" = "neutral";
   let revealErrors = false;
+  let errorTip = "";
+  let errorTipX = 0;
+  let errorTipY = 0;
   let focusAnnotation: number | null = null;
   let collapsed = new Set<number>();
   let hoverLine: number | null = null;
@@ -320,12 +322,39 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
   let submitted = false;
   let submission = "";
   let showSubmission = false;
+  let noticeFade = false;
+  let noticeTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function hideNotice() {
+    if (noticeTimer) clearTimeout(noticeTimer);
+    noticeTimer = null;
+    notice = "";
+    noticeFade = false;
+  }
+
+  function showNotice(message: string, tone: "success" | "partial" | "neutral") {
+    if (noticeTimer) clearTimeout(noticeTimer);
+    notice = message;
+    noticeTone = tone;
+    noticeFade = false;
+    noticeTimer = setTimeout(() => {
+      noticeFade = true;
+      handle.update();
+      noticeTimer = setTimeout(() => {
+        notice = "";
+        noticeFade = false;
+        noticeTimer = null;
+        handle.update();
+      }, 500);
+    }, 2200);
+  }
 
   handle.queueTask(() => {
     void restore(handle.props.problem);
   });
   handle.signal.addEventListener("abort", () => {
     if (citeTimer) clearTimeout(citeTimer);
+    if (noticeTimer) clearTimeout(noticeTimer);
     if (dirty) void persist();
   });
 
@@ -399,7 +428,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
     future.push(snapshot());
     restoreSnapshot(saved);
     revealErrors = false;
-    notice = "";
+    hideNotice();
     saveChange();
   }
 
@@ -409,7 +438,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
     past.push(snapshot());
     restoreSnapshot(saved);
     revealErrors = false;
-    notice = "";
+    hideNotice();
     saveChange();
   }
 
@@ -432,7 +461,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
       let saved = peekProgress(problem.type, problem.number);
       loaded = key;
       lines = parseWork(saved?.work) ?? [{ symbols: "", annotation: "", depth: 0, entered: false }];
-      notice = "";
+      hideNotice();
       revealErrors = false;
       collapsed = new Set();
       hoverLine = null;
@@ -663,10 +692,11 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                   gridRow: placed,
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "flex-end",
+                  justifyContent: "center",
+                  alignSelf: "stretch",
                   border: "none",
                   backgroundColor: "transparent",
-                  color: t.colors.text.primary,
+                  color: "#111827",
                   cursor: "pointer",
                 }),
                 numberSlot,
@@ -679,10 +709,26 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                 }),
               ]}
             >
-              <Icon
-                icon={collapsed.has(index) ? ChevronRight : ChevronDown}
-                mix={css({ width: t.space.xl, height: t.space.xl })}
-              />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 16 16"
+                aria-hidden="true"
+                mix={css({
+                  display: "block",
+                  width: "14px",
+                  height: "14px",
+                  flexShrink: "0",
+                })}
+              >
+                <path
+                  d={
+                    collapsed.has(index)
+                      ? "M5.1 2.4 L11.2 8 L5.1 13.6 L6.7 13.6 L12.8 8 L6.7 2.4 Z"
+                      : "M2.4 5.1 L8 11.2 L13.6 5.1 L13.6 6.7 L8 12.8 L2.4 6.7 Z"
+                  }
+                  fill="#111827"
+                />
+              </svg>
             </button>
           ) : (
             <h2
@@ -797,36 +843,33 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
           })()}
             {revealErrors && checked?.error ? (
               <span
-                mix={css({
-                  position: "absolute",
-                  top: "0px",
-                  right: t.space.sm,
-                  bottom: "0px",
-                  display: "flex",
-                  alignItems: "center",
-                  color: t.colors.text.warning,
-                  "&:hover > span": { display: "block" },
-                })}
+                aria-label={checked.error}
+                mix={[
+                  css({
+                    position: "absolute",
+                    top: "0px",
+                    right: t.space.sm,
+                    bottom: "0px",
+                    zIndex: "2",
+                    display: "flex",
+                    alignItems: "center",
+                    color: t.colors.text.warning,
+                    cursor: "help",
+                  }),
+                  on("pointerenter", (event) => {
+                    let box = event.currentTarget.getBoundingClientRect();
+                    errorTip = checked.error ?? "";
+                    errorTipX = box.left + box.width / 2;
+                    errorTipY = box.top;
+                    handle.update();
+                  }),
+                  on("pointerleave", () => {
+                    errorTip = "";
+                    handle.update();
+                  }),
+                ]}
               >
                 <Icon icon={CircleAlert} mix={css({ width: t.space.xl, height: t.space.xl })} />
-                <span
-                  mix={css({
-                    display: "none",
-                    position: "absolute",
-                    top: "100%",
-                    right: "0px",
-                    zIndex: "3",
-                    width: "16rem",
-                    padding: t.space.sm,
-                    backgroundColor: t.surface.lvl0,
-                    boxShadow: t.shadow.md,
-                    color: t.colors.text.primary,
-                    fontSize: t.fontSize.sm,
-                    lineHeight: t.lineHeight.normal,
-                  })}
-                >
-                  {checked.error}
-                </span>
               </span>
             ) : null}
           </div>
@@ -1170,10 +1213,24 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
             })}
           >
             <div
-              mix={css({
-                position: "relative",
-                display: "flex",
-              })}
+              mix={[
+                css({
+                  position: "relative",
+                  display: "flex",
+                }),
+                ref((node, signal) => {
+                  let closeOnOutside = (event: PointerEvent) => {
+                    if (!helpOpen) return;
+                    if (event.target instanceof Node && node.contains(event.target)) return;
+                    helpOpen = false;
+                    handle.update();
+                  };
+                  document.addEventListener("pointerdown", closeOnOutside);
+                  signal.addEventListener("abort", () => {
+                    document.removeEventListener("pointerdown", closeOnOutside);
+                  });
+                }),
+              ]}
             >
               <button
                 type="button"
@@ -1185,7 +1242,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                   }),
                 ]}
               >
-                Help
+                Command Reference
               </button>
               {helpOpen ? (
                 <div
@@ -1205,7 +1262,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                     lineHeight: t.lineHeight.normal,
                   })}
                 >
-                  {["General terms", "Begin a derivation", "Logical operations", "Completing a derivation", "Begin a subderivation"].map((group) => (
+                  {["Begin a derivation", "Logical operations", "Completing a derivation", "Begin a subderivation"].map((group) => (
                     <div key={group}>
                       <div
                         mix={css({
@@ -1221,40 +1278,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                       >
                         {group}
                       </div>
-                      {group === "General terms"
-                        ? [
-                            ["conditional", "The arrow in P→Q."],
-                            ["antecedent", "P in P→Q, the part before the arrow."],
-                            ["consequent", "Q in P→Q, the part after the arrow."],
-                          ].map(([term, meaning]) => (
-                            <div
-                              key={term}
-                              mix={css({
-                                display: "grid",
-                                gridTemplateColumns: "12rem minmax(0, 1fr)",
-                                alignItems: "start",
-                                columnGap: t.space.lg,
-                                paddingInline: t.space.md,
-                                paddingBlock: t.space.xs,
-                                color: t.colors.text.primary,
-                                fontSize: t.fontSize.sm,
-                                lineHeight: t.lineHeight.normal,
-                              })}
-                            >
-                              <span
-                                mix={css({
-                                  display: "flex",
-                                  alignItems: "flex-start",
-                                  gap: t.space.sm,
-                                })}
-                              >
-                                <span mix={css({ width: t.space.lg, flexShrink: "0" })} />
-                                {term}
-                              </span>
-                              <span mix={css({ color: "#111827" })}>{meaning}</span>
-                            </div>
-                          ))
-                        : ruleHelp.filter((rule) => rule.group === group).map((rule) => {
+                      {ruleHelp.filter((rule) => rule.group === group).map((rule) => {
                     let open = helpOpenRules.has(rule.name);
                     return (
                       <div key={rule.name}>
@@ -1291,20 +1315,30 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                           <span
                             mix={css({
                               display: "flex",
-                              alignItems: "flex-start",
+                              alignItems: "center",
                               gap: t.space.sm,
                             })}
                           >
-                            <Icon
-                              icon={open ? ChevronDown : ChevronRight}
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 16 16"
+                              aria-hidden="true"
                               mix={css({
-                                width: t.space.lg,
-                                height: t.space.lg,
+                                display: "block",
+                                width: "12px",
+                                height: "12px",
                                 flexShrink: "0",
-                                marginTop: "0.15em",
-                                color: t.colors.text.primary,
                               })}
-                            />
+                            >
+                              <path
+                                d={
+                                  open
+                                    ? "M2.4 5.1 L8 11.2 L13.6 5.1 L13.6 6.7 L8 12.8 L2.4 6.7 Z"
+                                    : "M5.1 2.4 L11.2 8 L5.1 13.6 L6.7 13.6 L12.8 8 L6.7 2.4 Z"
+                                }
+                                fill="#111827"
+                              />
+                            </svg>
                             {rule.command}
                           </span>
                           <span mix={css({ color: "#111827" })}>{rule.does}</span>
@@ -1318,9 +1352,6 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                 </div>
               ) : null}
             </div>
-            <button type="button" mix={[action]}>
-              Feedback
-            </button>
             <button
               type="button"
               disabled={past.length === 0}
@@ -1349,8 +1380,18 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                 action,
                 on("click", () => {
                   revealErrors = true;
-                  notice = result.complete ? "Checked: complete." : "Checked: incomplete.";
-                  saveChange(result.complete ? "correct" : "incorrect");
+                  let logicCorrect = result.lines.every((line) => !line.error);
+                  showNotice(
+                    logicCorrect && result.complete
+                      ? "Logic is correct and complete"
+                      : logicCorrect
+                        ? "Logic is correct"
+                        : result.complete
+                          ? "Logic is complete"
+                          : "Logic is incorrect",
+                    logicCorrect && result.complete ? "success" : logicCorrect ? "partial" : "neutral",
+                  );
+                  saveChange(result.complete && logicCorrect ? "correct" : "incorrect");
                 }),
               ]}
             >
@@ -1371,7 +1412,7 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                   if (citeTimer) clearTimeout(citeTimer);
                   citeTimer = null;
                   revealErrors = false;
-                  notice = "";
+                  hideNotice();
                   saveChange("unattempted");
                 }),
               ]}
@@ -1386,11 +1427,11 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
                     submitAction,
                     on("click", () => {
                       if (!result.complete) {
-                        notice = "Submit needs a finished derivation.";
+                        showNotice("Submit needs a finished derivation.", "neutral");
                         handle.update();
                         return;
                       }
-                      notice = submitted ? "Resubmitted." : "Submitted.";
+                      showNotice("Submission Successful!", "success");
                       submitted = true;
                       submission = JSON.stringify(
                         lines.filter((line) => line.symbols.trim() !== "" || line.annotation.trim() !== ""),
@@ -1528,19 +1569,48 @@ export function DerivationProblem(handle: Handle<DerivationProblemProps>) {
             </div>
           ) : null}
         </div>
+        {errorTip ? (
+          <span
+            mix={css({
+              position: "fixed",
+              left: `${errorTipX}px`,
+              top: `${errorTipY}px`,
+              transform: "translate(-50%, calc(-100% - 6px))",
+              zIndex: "40",
+              maxWidth: "16rem",
+              paddingInline: t.space.sm,
+              paddingBlock: t.space.xs,
+              borderRadius: t.radius.sm,
+              backgroundColor: t.colors.text.primary,
+              color: "#ffffff",
+              fontSize: t.fontSize.xs,
+              fontWeight: t.fontWeight.normal,
+              lineHeight: t.lineHeight.normal,
+              pointerEvents: "none",
+            })}
+          >
+            {errorTip}
+          </span>
+        ) : null}
         {notice ? (
           <div
             mix={css({
               position: "fixed",
-              top: t.space.xl,
+              zIndex: "50",
+              top: t.space.md,
               left: "50%",
               transform: "translateX(-50%)",
+              opacity: noticeFade ? "0" : "1",
+              transition: "opacity 500ms ease",
               paddingInline: t.space.lg,
               paddingBlock: t.space.md,
               borderRadius: t.radius.md,
-              backgroundColor: t.colors.text.primary,
-              color: t.surface.lvl0,
+              backgroundColor:
+                noticeTone === "success" ? "#16a34a" : noticeTone === "partial" ? "#eab308" : t.colors.text.primary,
+              color: noticeTone === "partial" ? "#111827" : noticeTone === "success" ? "#ffffff" : t.surface.lvl0,
               fontSize: t.fontSize.sm,
+              lineHeight: t.lineHeight.normal,
+              whiteSpace: "nowrap",
               boxShadow: t.shadow.md,
             })}
           >
